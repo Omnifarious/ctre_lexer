@@ -1,0 +1,3 @@
+syntax: re
+^cmake-build-[a-zA-Z-]*$
+^\.idea$
