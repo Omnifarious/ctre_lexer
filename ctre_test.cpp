@@ -76,6 +76,7 @@ void remove_telnet(::std::string_view sv, void (*outputter)(char c)) {
    return ::std::string{filtered.begin(), filtered.end()};
 }
 
+#if 0
 
 #include <coroutine>
 #include <iostream>
@@ -196,7 +197,7 @@ int main()
    print_range(::std::cout, -5, 5);
 }
 
-#if 0
+#else
 int main(int argc, char const *argv[])
 {
    using sv = ::std::string_view;
