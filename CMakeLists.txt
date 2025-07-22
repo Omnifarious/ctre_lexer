@@ -9,5 +9,9 @@ target_compile_features(ctre_test PUBLIC cxx_std_23)
 target_compile_options(ctre_test PUBLIC -fcoroutines)
 target_link_libraries(ctre_test PRIVATE ctre::ctre)
 
+add_executable(lexer_test lexer_test.cpp)
+target_compile_features(lexer_test PUBLIC cxx_std_23)
+target_link_libraries(lexer_test PRIVATE ctre::ctre)
+
 #add_executable(generic_hash generic_hash.cpp)
 #target_compile_features(generic_hash PUBLIC cxx_std_14)
