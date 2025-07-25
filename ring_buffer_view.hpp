@@ -49,13 +49,14 @@ class input_to_forward_range_adapter {
 
       value_type operator *() const
       {
+         auto const &p = *parent_;
          if (generation_ == end_generation) {
             ::std::unreachable();
          }
-         if (generation_ == parent_.generation_ && pos_ < parent_.write_pos_) {
-            return parent_.buffer_[pos_];
-         } else if (generation_ < parent_.generation_ && pos_ >= parent_.write_pos_) {
-            return parent_.buffer_[pos_];
+         if (generation_ == p.generation_ && pos_ < p.write_pos_) {
+            return p.buffer_[pos_];
+         } else if (generation_ < p.generation_ && pos_ >= p.write_pos_) {
+            return p.buffer_[pos_];
          } else {
             throw buffer_overflow_error();
          }
@@ -63,6 +64,7 @@ class input_to_forward_range_adapter {
 
       iterator &operator ++()
       {
+         auto &p = *parent_;
          if (generation_ == end_generation) {
             return *this;
          }
@@ -71,17 +73,17 @@ class input_to_forward_range_adapter {
             pos_ = 0;
             ++generation_;
          }
-         if (generation_ > parent_.generation_ ||
-            generation_ == parent_.generation_ && pos_ >= parent_.write_pos_)
+         if (generation_ > p.generation_ ||
+            generation_ == p.generation_ && pos_ >= p.write_pos_)
          {
-            if (!parent_.next_character()) {
+            if (!p.next_character()) {
                generation_ = end_generation;
                return *this;
             }
          }
          assert(
-            generation_ == parent_.generation_ && (generation_ == end_generation || pos_ < parent_.write_pos_) ||
-            generation_ < parent_.generation_
+            generation_ == p.generation_ && (generation_ == end_generation || pos_ < p.write_pos_) ||
+            generation_ < p.generation_
          );
          return *this;
       }
@@ -91,19 +93,16 @@ class input_to_forward_range_adapter {
          ++(*this);
          return saved;
       }
-      iterator &operator =(iterator const &b)
-      {
-         assert(&parent_ == &b.parent_);
-         generation_ = b.generation_;
-         pos_ = b.pos_;
-         return *this;
-      }
+      iterator &operator =(iterator const &b) = default;
       bool operator ==(iterator const &b) const
       {
+         if (parent_ == nullptr) {
+            return false;
+         }
          if (generation_ == end_generation && b.generation_ == end_generation) {
             return true;
          }
-         if (&parent_ != &b.parent_) {
+         if (parent_ != b.parent_) {
             return false;
          } else if (generation_ != b.generation_) {
             return false;
@@ -119,15 +118,16 @@ class input_to_forward_range_adapter {
 
     protected:
       iterator(
-         input_to_forward_range_adapter &parent,
+         input_to_forward_range_adapter *parent,
          ::std::uint64_t generation, ::std::size_t pos
       )
          : parent_(parent), generation_(generation), pos_(pos)
       {
+         assert(parent != nullptr);
       }
 
     private:
-      input_to_forward_range_adapter &parent_;
+      input_to_forward_range_adapter *parent_;
       ::std::uint64_t generation_ = end_generation;
       ::std::size_t pos_;
    };
@@ -138,11 +138,11 @@ class input_to_forward_range_adapter {
          return end();
       }
       assert(write_pos_ > 0);
-      return iterator(*this, 0, 0);
+      return iterator(this, 0, 0);
    }
    iterator end()
    {
-      return iterator(*this, end_generation, 0);
+      return iterator(this, end_generation, 0);
    }
 
 private:
