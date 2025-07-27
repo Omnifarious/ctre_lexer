@@ -8,14 +8,30 @@
 #include <iterator>
 #include <vector>
 #include <string>
+#include <regex>
 
-auto const tokenizer_re = ::ctre::tokenize<
+static constexpr auto lex_patterns = ctll::fixed_string{
    "\\s*(?:"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_hex>0x[0-9a-fA-F]+)"
-   ")"
+   ")\\s+"
+};
+
+auto const tokenizer_re = ::ctre::tokenize<
+   lex_patterns
 >;
+
+auto const startswith_re = ::ctre::starts_with<
+   lex_patterns
+>;
+
+namespace rexc = ::std::regex_constants;
+
+auto const tokenizer_cppre = ::std::regex{
+   ::std::string{lex_patterns.begin(), lex_patterns.end()},
+   rexc::ECMAScript | rexc::multiline
+};
 
 int main()
 {
@@ -23,7 +39,7 @@ int main()
    ::std::istreambuf_iterator<char> it(::std::cin);
    ::std::istreambuf_iterator<char> end;
    input_to_forward_range_adapter adapter{it, end};
-#if 1
+#if 0
    using iter_t = decltype(adapter)::iterator;
    iter_t finger = adapter.begin();
    iter_t finished = adapter.end();
@@ -54,7 +70,7 @@ int main()
       if (token) {
          ::std::cout << "got one\n";
          const ::std::string value = ::std::string{token.get<0>().begin(), token.get<0>().end()};
-         ::std::cout << value << "\n";
+         ::std::cout << "[" << value << "]\n";
       }
    }
 #endif
