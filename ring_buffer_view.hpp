@@ -21,7 +21,7 @@ class input_to_forward_range_adapter {
    static_assert(size_log2 >= 4 && size_log2 <= 28,
                  "Buffer must be from 2^4 to 2^28 in size.");
 
- public:
+public:
    struct iterator;
    friend struct iterator;
    using value_type = typename I::value_type;
@@ -30,8 +30,10 @@ class input_to_forward_range_adapter {
    static constexpr auto end_generation = ::std::numeric_limits<gen_t>::max();
 
    class buffer_overflow_error : public ::std::runtime_error {
-    public:
-      buffer_overflow_error() : runtime_error("Ring buffer overflow.") {}
+   public:
+      buffer_overflow_error() : runtime_error("Ring buffer overflow.")
+      {
+      }
    };
 
    explicit input_to_forward_range_adapter(I const &start, I const &end)
@@ -46,6 +48,8 @@ class input_to_forward_range_adapter {
       using value_type = input_to_forward_range_adapter::value_type;
       using iterator_category = ::std::forward_iterator_tag;
       using reference = value_type const &;
+
+      iterator() = default;
 
       value_type operator *() const
       {
@@ -74,8 +78,7 @@ class input_to_forward_range_adapter {
             ++generation_;
          }
          if (generation_ > p.generation_ ||
-            generation_ == p.generation_ && pos_ >= p.write_pos_)
-         {
+             generation_ == p.generation_ && pos_ >= p.write_pos_) {
             if (!p.next_character()) {
                generation_ = end_generation;
                return *this;
@@ -87,13 +90,16 @@ class input_to_forward_range_adapter {
          );
          return *this;
       }
+
       iterator operator ++(int)
       {
          iterator saved{*this};
          ++(*this);
          return saved;
       }
+
       iterator &operator =(iterator const &b) = default;
+
       bool operator ==(iterator const &b) const
       {
          if (parent_ == nullptr) {
@@ -111,12 +117,13 @@ class input_to_forward_range_adapter {
          }
          return true;
       }
+
       bool operator !=(iterator const &b) const
       {
          return !operator ==(b);
       }
 
-    protected:
+   protected:
       iterator(
          input_to_forward_range_adapter *parent,
          ::std::uint64_t generation, ::std::size_t pos
@@ -126,10 +133,10 @@ class input_to_forward_range_adapter {
          assert(parent != nullptr);
       }
 
-    private:
-      input_to_forward_range_adapter *parent_;
+   private:
+      input_to_forward_range_adapter *parent_ = nullptr;
       ::std::uint64_t generation_ = end_generation;
-      ::std::size_t pos_;
+      ::std::size_t pos_ = 0U;
    };
 
    iterator begin()
@@ -140,6 +147,7 @@ class input_to_forward_range_adapter {
       assert(write_pos_ > 0);
       return iterator(this, 0, 0);
    }
+
    iterator end()
    {
       return iterator(this, end_generation, 0);
