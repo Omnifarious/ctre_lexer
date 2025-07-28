@@ -15,7 +15,7 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_hex>0x[0-9a-fA-F]+)"
-   ")\\s+"
+   ")"
 };
 
 auto const tokenizer_re = ::ctre::tokenize<
