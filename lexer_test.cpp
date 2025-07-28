@@ -27,11 +27,12 @@ auto const startswith_re = ::ctre::starts_with<
 >;
 
 namespace rexc = ::std::regex_constants;
-
+#if 0
 auto const tokenizer_cppre = ::std::regex{
    ::std::string{lex_patterns.begin(), lex_patterns.end()},
    rexc::ECMAScript | rexc::multiline
 };
+#endif
 
 int main()
 {
