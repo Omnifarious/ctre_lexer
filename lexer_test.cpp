@@ -33,46 +33,32 @@ auto const tokenizer_cppre = ::std::regex{
    rexc::ECMAScript | rexc::multiline
 };
 #endif
+template <::std::forward_iterator I>
+::std::vector<::std::string> tokenize_tokenizer(I begin, I end)
+{
+   ::std::vector<::std::string> result;
+   for (auto token: tokenizer_re(begin, end)) {
+      if (token) {
+         ::std::clog << "got one\n";
+         auto const &full_capture = token.template get<0>();
+         result.emplace_back(full_capture.begin(), full_capture.end());
+      }
+   }
+   return result;
+}
 
 int main()
 {
-   int i;
-   ::std::istreambuf_iterator<char> it(::std::cin);
-   ::std::istreambuf_iterator<char> end;
-   input_to_forward_range_adapter adapter{it, end};
-#if 0
-   using iter_t = decltype(adapter)::iterator;
-   iter_t finger = adapter.begin();
-   iter_t finished = adapter.end();
-   iter_t first_nonspace = finger;
-   enum { In_Space, In_NonSpace } state = In_Space;
-   ::std::vector<::std::string> words;
-   for (; finger != finished; ++finger) {
-      if (isspace(*finger)) {
-         if (state == In_NonSpace) {
-            words.emplace_back(first_nonspace, finger);
-         }
-         state = In_Space;
-      } else {
-         if (state == In_Space) {
-            first_nonspace = finger;
-            state = In_NonSpace;
-         }
-      }
+   using rawchars_t = ::std::istreambuf_iterator<char>;
+   auto tokenize = [](){
+      input_to_forward_range_adapter adapter{
+         rawchars_t{::std::cin}, rawchars_t{}
+      };
+      return tokenize_tokenizer(adapter.begin(), adapter.end());
+   };
+   auto const tokens = tokenize();
+   for (auto const &token: tokens) {
+      ::std::cout << " - [\"" << token << "\"]\n";
    }
-   if (state == In_NonSpace) {
-      words.emplace_back(first_nonspace, finished);
-   }
-   for (auto const &word: words) {
-      ::std::cout << " - [" << word << "]\n";
-   }
-#else
-   for (auto token: tokenizer_re(adapter.begin(), adapter.end())) {
-      if (token) {
-         ::std::cout << "got one\n";
-         const ::std::string value = ::std::string{token.get<0>().begin(), token.get<0>().end()};
-         ::std::cout << "[" << value << "]\n";
-      }
-   }
-#endif
+
 }
