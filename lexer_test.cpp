@@ -70,6 +70,10 @@ void tokenize_test()
    }
 }
 
+// helper type for the visitor
+template<class... Ts>
+struct overloads : Ts... { using Ts::operator()...; };
+
 int main()
 {
    using rawchars_t = ::std::istreambuf_iterator<char>;
@@ -97,6 +101,21 @@ int main()
             auto const num = oct.to_string();
             tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
          }
+         if (auto const &id = match.get<"identifier">()) {
+            tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
+         }
       }
+   }
+   const auto visitor = overloads
+   {
+      [](Tokens::UnsignedInteger const &t) {
+         ::std::cout << format("num: \"{}\" -> {}\n", t.orig_text_, t.value_);
+      },
+      [](Tokens::Identifier const &t) {
+         ::std::cout << format(" id: \"{}\" -> {}\n", t.orig_text_, t.value_);
+      }
+   };
+   for (auto const &token: tokens) {
+      ::std::visit(visitor, token);
    }
 }
