@@ -4,6 +4,8 @@ project(ctre_test)
 
 add_subdirectory(ctre)
 
+find_package(fmt REQUIRED)
+
 add_executable(ctre_test ctre_test.cpp)
 target_compile_features(ctre_test PUBLIC cxx_std_23)
 target_compile_options(ctre_test PUBLIC -fcoroutines)

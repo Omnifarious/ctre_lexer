@@ -8,6 +8,7 @@
 #include <iterator>
 #include <vector>
 #include <string>
+#include <format>
 
 static constexpr auto lex_patterns = ctll::fixed_string{
    "\\s*(?:"
@@ -46,7 +47,6 @@ int main()
    };
    auto const tokens = tokenize();
    for (auto const &token: tokens) {
-      ::std::cout << " - [\"" << token << "\"]\n";
+      ::std::cout << ::std::format(" - [\"{}\"]\n", token);
    }
-
 }
