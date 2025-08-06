@@ -154,11 +154,15 @@ int main()
          ::std::cout << format(" id: \"{}\" -> {}\n", t.orig_text_, t.value_);
       },
       [](Tokens::Operator const &t) {
-         char const *op_name[] = {"plus", "minus", "multiply", "divide"};
+         using namespace ::std::literals::string_view_literals;
+         using sv = ::std::string_view;
+         sv const op_name[] = {"plus"sv, "minus"sv, "multiply"sv, "divide"sv};
          ::std::cout << format(" op: \"{}\" -> {}\n", t.orig_text_, op_name[t.value_]);
       },
       [](Tokens::Paren const &t) {
-         char const *paren_name[] = {"open", "close"};
+         using namespace ::std::literals::string_view_literals;
+         using sv = ::std::string_view;
+         sv const paren_name[] = {"open"sv, "close"sv};
          ::std::cout << format("par: \"{}\" -> {}\n", t.orig_text_, paren_name[t.value_]);
       }
    };
