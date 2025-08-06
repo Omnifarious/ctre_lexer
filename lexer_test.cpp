@@ -8,7 +8,6 @@
 #include <iterator>
 #include <vector>
 #include <string>
-#include <regex>
 
 static constexpr auto lex_patterns = ctll::fixed_string{
    "\\s*(?:"
@@ -22,17 +21,6 @@ auto const tokenizer_re = ::ctre::tokenize<
    lex_patterns
 >;
 
-auto const startswith_re = ::ctre::starts_with<
-   lex_patterns
->;
-
-namespace rexc = ::std::regex_constants;
-#if 0
-auto const tokenizer_cppre = ::std::regex{
-   ::std::string{lex_patterns.begin(), lex_patterns.end()},
-   rexc::ECMAScript | rexc::multiline
-};
-#endif
 template <::std::forward_iterator I>
 ::std::vector<::std::string> tokenize_tokenizer(I begin, I end)
 {
