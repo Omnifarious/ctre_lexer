@@ -99,7 +99,7 @@ int main()
    using ::std::stoull;
    for (auto const &match: matches) {
       if (match) {
-         ::std::clog << "got one" << ::std::endl;
+         ::std::clog << "got one\n" << ::std::flush;
          ::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
          if (auto const &dec = match.get<"int_dec">()) {
             auto const num = dec.to_string();
