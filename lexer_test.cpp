@@ -5,6 +5,7 @@
 #include <ctre.hpp>
 #include <iostream>
 #include "ring_buffer_view.hpp"
+#include <variant>
 #include <iterator>
 #include <vector>
 #include <string>
