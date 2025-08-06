@@ -10,13 +10,16 @@
 #include <vector>
 #include <string>
 #include <format>
+#include <fmt/format.h>
 
 static constexpr auto lex_patterns = ctll::fixed_string{
    "(?m)\\s*(?:"
    "(?<int_hex>0x[0-9a-fA-F]+)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
-   "(?<identifier>\\w(?:\\w|\\d)*)"
+   "(?<identifier>\\w(?:\\w|\\d)*)|"
+   "(?<operator>[+*/]|-)|"
+   "(?<paren>[()])"
    ")"
 };
 
@@ -38,7 +41,15 @@ struct Identifier : Base {
    ::std::string value_;
 };
 
-using AnyToken = ::std::variant<UnsignedInteger, Identifier>;
+struct Operator : Base {
+   enum { Plus, Minus, Multiply, Divide } value_;
+};
+
+struct Paren : Base {
+   enum { Open, Close } value_;
+};
+
+using AnyToken = ::std::variant<UnsignedInteger, Identifier, Operator, Paren>;
 
 }
 
@@ -93,17 +104,44 @@ int main()
          if (auto const &dec = match.get<"int_dec">()) {
             auto const num = dec.to_string();
             tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
-         }
-         if (auto const &hex = match.get<"int_hex">()) {
+         } else if (auto const &hex = match.get<"int_hex">()) {
             auto const num = hex.to_string();
             tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 16)});
-         }
-         if (auto const &oct = match.get<"int_oct">()) {
+         } else if (auto const &oct = match.get<"int_oct">()) {
             auto const num = oct.to_string();
             tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
-         }
-         if (auto const &id = match.get<"identifier">()) {
+         } else if (auto const &id = match.get<"identifier">()) {
             tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
+         } else if (auto const &op = match.get<"operator">()) {
+            switch (op.to_string()[0]) {
+             case '+':
+               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Plus});
+               break;
+             case '-':
+               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Minus});
+               break;
+             case '*':
+               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Multiply});
+               break;
+             case '/':
+               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Divide});
+               break;
+             default:
+               assert(!"Unexpected operator");
+               break;
+            }
+         } else if (auto const &paren = match.get<"paren">()) {
+            switch (paren.to_string()[0]) {
+             case '(':
+               tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Open});
+               break;
+             case ')':
+               tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Close});
+               break;
+             default:
+               assert(!"Unexpected parenthesis");
+               break;
+            }
          }
       }
    }
@@ -114,6 +152,14 @@ int main()
       },
       [](Tokens::Identifier const &t) {
          ::std::cout << format(" id: \"{}\" -> {}\n", t.orig_text_, t.value_);
+      },
+      [](Tokens::Operator const &t) {
+         char const *op_name[] = {"plus", "minus", "multiply", "divide"};
+         ::std::cout << format(" op: \"{}\" -> {}\n", t.orig_text_, op_name[t.value_]);
+      },
+      [](Tokens::Paren const &t) {
+         char const *paren_name[] = {"open", "close"};
+         ::std::cout << format("par: \"{}\" -> {}\n", t.orig_text_, paren_name[t.value_]);
       }
    };
    for (auto const &token: tokens) {
