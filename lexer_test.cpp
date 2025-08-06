@@ -28,7 +28,7 @@ template <::std::forward_iterator I>
    for (auto token: tokenizer_re(begin, end)) {
       if (token) {
          ::std::clog << "got one\n";
-         auto const &full_capture = token.template get<0>();
+         auto const &full_capture = token.to_string();
          result.emplace_back(full_capture.begin(), full_capture.end());
       }
    }
