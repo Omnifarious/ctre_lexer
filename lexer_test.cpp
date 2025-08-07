@@ -59,7 +59,7 @@ template <::std::forward_iterator I>
    ::std::vector<::std::string> result;
    for (auto token: tokenizer_re(begin, end)) {
       if (token) {
-         ::std::clog << "got one\n";
+         // ::std::clog << "got one\n";
          auto const &full_capture = token.to_string();
          result.emplace_back(full_capture.begin(), full_capture.end());
       }
@@ -99,8 +99,8 @@ int main()
    using ::std::stoull;
    for (auto const &match: matches) {
       if (match) {
-         ::std::clog << "got one\n" << ::std::flush;
-         ::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
+         //::std::clog << "got one\n" << ::std::flush;
+         //::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
          if (auto const &dec = match.get<"int_dec">()) {
             auto const num = dec.to_string();
             tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
