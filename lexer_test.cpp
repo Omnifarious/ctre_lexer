@@ -10,6 +10,8 @@
 #include <vector>
 #include <string>
 #include <format>
+#include <memory>
+#include <type_traits>
 #include <fmt/format.h>
 
 static constexpr auto lex_patterns = ctll::fixed_string{
@@ -169,4 +171,170 @@ int main()
    for (auto const &token: tokens) {
       ::std::visit(visitor, token);
    }
+}
+
+
+class Expression {
+ public:
+   virtual ~Expression() = default;
+
+   virtual ::std::uintmax_t evaluate() const = 0;
+   virtual ::std::string to_infix_string() const = 0;
+   virtual ::std::string to_prefix_string() const = 0;
+};
+
+using exprptr_t = ::std::unique_ptr<Expression>;
+
+class BinaryOperation : public Expression {
+ public:
+   using OpType = decltype(::std::declval<Tokens::Operator>().value_);
+   BinaryOperation(OpType op, exprptr_t left, exprptr_t right) :
+       op_(op), left_(::std::move(left)), right_(::std::move(right))
+   {}
+
+   ::std::uintmax_t evaluate() const override { return 0; }
+   ::std::string to_infix_string() const override;
+   ::std::string to_prefix_string() const override;
+ private:
+   OpType op_;
+   exprptr_t left_;
+   exprptr_t right_;
+};
+
+class IdentifierExpression : public Expression {
+ public:
+   explicit IdentifierExpression(Tokens::Identifier const &idtok) :
+       name_(idtok.value_)
+   {}
+
+   ::std::uintmax_t evaluate() const override { return 0; }
+   ::std::string to_infix_string() const override { return name_; }
+   ::std::string to_prefix_string() const override { return name_; }
+
+ private:
+   ::std::string name_;
+};
+
+class NumericLiteral : public Expression {
+ public:
+   NumericLiteral(::std::uintmax_t value) : value_(value)
+   {}
+
+   ::std::uintmax_t evaluate() const override { return value_; }
+   ::std::string to_infix_string() const override { return ::std::to_string(value_); }
+   ::std::string to_prefix_string() const override { return ::std::to_string(value_); }
+
+ private:
+   ::std::uintmax_t value_;
+};
+
+
+// expression <- term | term ( + | - ) expression
+// term <- factor | factor ( * | / ) term | "(" expression ")"
+// factor <- identifer | numeric_literal
+
+
+using toklist_t = ::std::vector<Tokens::AnyToken>;
+using parse_result_t = ::std::pair<exprptr_t, toklist_t::iterator>;
+
+parse_result_t
+parse_term(toklist_t::iterator start, toklist_t::iterator finish);
+parse_result_t
+parse_factor(toklist_t::iterator start, toklist_t::iterator finish);
+
+parse_result_t parse_expression(
+   ::std::vector<Tokens::AnyToken>::iterator start,
+   ::std::vector<Tokens::AnyToken>::iterator finish
+   )
+{
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   auto [term, remainder] = parse_term(start, finish);
+   if (remainder == finish) {
+      return parse_result_t{::std::move(term), remainder};
+   } else if (!term) {
+      ::std::cerr << "Expected term, parse aborted.\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto const &op = *remainder;
+   if (!::std::holds_alternative<Tokens::Operator>(op)) {
+      ::std::cerr << "Expected operator, parse aborted.\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto const &opval = ::std::get<Tokens::Operator>(op).value_;
+   if (opval != Tokens::Operator::Plus && opval != Tokens::Operator::Minus) {
+      ::std::cerr << "Expected + or -, parse aborted.\n";
+      ::std::cerr << "This is likely a programming error.\n";
+      return parse_result_t{nullptr, finish};
+   }
+   ++remainder;
+   auto [rterm, rremainder] = parse_expression(remainder, finish);
+   if (rterm) {
+      return parse_result_t{
+         ::std::make_unique<BinaryOperation>(opval, ::std::move(term), ::std::move(rterm)),
+         rremainder
+      };
+   } else {
+      ::std::cerr << "Expected expression, parse aborted.\n";
+      return parse_result_t{nullptr, finish};
+   }
+}
+
+parse_result_t
+parse_term(toklist_t::iterator start, toklist_t::iterator finish)
+{
+   if (start == finish) {
+      return {nullptr, finish};
+   }
+   auto [factor, remainder] = parse_factor(start, finish);
+   if (remainder == finish) {
+      return parse_result_t{::std::move(factor), remainder};
+   } else if (!factor) {
+      ::std::cerr << "Expected factor, parse aborted.\n";
+      return {nullptr, finish};
+   }
+   auto const &op = *remainder;
+   if (!::std::holds_alternative<Tokens::Operator>(op)) {
+      ::std::cerr << "Expected operator, parse aborted.\n";
+      return {nullptr, finish};
+   }
+   auto const &opval = ::std::get<Tokens::Operator>(op).value_;
+   if (opval != Tokens::Operator::Multiply && opval != Tokens::Operator::Divide) {
+      ::std::cerr << "Expected * or /, parse aborted.\n";
+      ::std::cerr << "This is likely a programming error.\n";
+      return {nullptr, finish};
+   }
+   ++remainder;
+   auto [rfactor, rremainder] = parse_term(remainder, finish);
+   if (rfactor) {
+      return {
+         ::std::make_unique<BinaryOperation>(opval, ::std::move(factor), ::std::move(rfactor)),
+         rremainder
+      };
+   } else {
+      ::std::cerr << "Expected factor, parse aborted.\n";
+      return {nullptr, finish};
+   }
+}
+
+parse_result_t parse_factor(toklist_t::iterator start, toklist_t::iterator finish)
+{
+   if (start == finish) {
+      return {nullptr, finish};
+   }
+   auto const &tok = *start;
+   if (auto const id = ::std::get_if<Tokens::Identifier>(&tok)) {
+      return {
+         ::std::make_unique<IdentifierExpression>(*id),
+         ::std::next(start)
+      };
+   } else if (auto const num = ::std::get_if<Tokens::UnsignedInteger>(&tok)) {
+      return {
+         ::std::make_unique<NumericLiteral>(num->value_),
+         ::std::next(start)
+      };
+   }
+   ::std::cerr << "Expected factor, parse aborted.\n";
+   return {nullptr, finish};
 }
