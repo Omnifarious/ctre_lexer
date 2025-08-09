@@ -14,6 +14,8 @@
 #include <type_traits>
 #include <fmt/format.h>
 
+using namespace ::std::literals::string_view_literals;
+
 static constexpr auto lex_patterns = ctll::fixed_string{
    "(?m)\\s*(?:"
    "(?<int_hex>0x[0-9a-fA-F]+)|"
@@ -55,6 +57,26 @@ using AnyToken = ::std::variant<UnsignedInteger, Identifier, Operator, Paren>;
 
 }
 
+class Expression {
+public:
+   virtual ~Expression() = default;
+
+   virtual ::std::uintmax_t evaluate() const = 0;
+   virtual ::std::string to_infix_string() const = 0;
+   virtual ::std::string to_prefix_string() const = 0;
+};
+
+using exprptr_t = ::std::unique_ptr<Expression>;
+using toklist_t = ::std::vector<Tokens::AnyToken>;
+using parse_result_t = ::std::pair<exprptr_t, toklist_t::iterator>;
+
+parse_result_t
+parse_expression(toklist_t::iterator start, toklist_t::iterator finish);
+parse_result_t
+parse_term(toklist_t::iterator start, toklist_t::iterator finish);
+parse_result_t
+parse_factor(toklist_t::iterator start, toklist_t::iterator finish);
+
 template <::std::forward_iterator I>
 ::std::vector<::std::string> tokenize_tokenizer(I begin, I end)
 {
@@ -95,7 +117,7 @@ int main()
       rawchars_t{::std::cin}, rawchars_t{}
    };
    auto matches = tokenizer_re(adapter.begin(), adapter.end());
-   ::std::vector<Tokens::AnyToken> tokens;
+   toklist_t tokens;
    using ::std::format;
    using ::std::cout;
    using ::std::stoull;
@@ -171,19 +193,20 @@ int main()
    for (auto const &token: tokens) {
       ::std::visit(visitor, token);
    }
+   auto const [expr, remainder] = parse_expression(tokens.begin(), tokens.end());
+   if (remainder != tokens.end()) {
+      ::std::cerr << "Parse error: unexpected token at end of input.\n";
+   }
+   if (expr) {
+      ::std::cout << "Expression: " << expr->to_prefix_string() << "\n";
+      ::std::cout << "    Result: " << expr->evaluate() << "\n";
+   } else {
+      ::std::cerr << "Parse error: no expression parsed.\n";
+   }
+   ::std::cout << "Done.\n";
+   return 0;
 }
 
-
-class Expression {
- public:
-   virtual ~Expression() = default;
-
-   virtual ::std::uintmax_t evaluate() const = 0;
-   virtual ::std::string to_infix_string() const = 0;
-   virtual ::std::string to_prefix_string() const = 0;
-};
-
-using exprptr_t = ::std::unique_ptr<Expression>;
 
 class BinaryOperation : public Expression {
  public:
@@ -192,14 +215,64 @@ class BinaryOperation : public Expression {
        op_(op), left_(::std::move(left)), right_(::std::move(right))
    {}
 
-   ::std::uintmax_t evaluate() const override { return 0; }
+   ::std::uintmax_t evaluate() const override;
    ::std::string to_infix_string() const override;
    ::std::string to_prefix_string() const override;
+
  private:
    OpType op_;
    exprptr_t left_;
    exprptr_t right_;
+
+   using sv = ::std::string_view;
+   static sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv};
 };
+
+::std::uintmax_t BinaryOperation::evaluate() const
+{
+   auto const lval = left_->evaluate();
+   auto const rval = right_->evaluate();
+   using namespace Tokens;
+
+   switch (op_) {
+    case Operator::Plus:
+      return lval + rval;
+      break;
+    case Operator::Minus:
+      return lval - rval;
+      break;
+    case Operator::Multiply:
+      return lval * rval;
+      break;
+    case Operator::Divide:
+      return lval / rval;
+      break;
+    default:
+      assert(!"Unexpected operator");
+   }
+   return 0;
+}
+
+// The problem that needs to be solved here...  how to deal with precedence
+// inversion. The simplest option is to just parenthesize everything.
+//
+//        *
+//    ,--/ \--.
+//    +       *
+//  ,/ \.   ,/ \.
+//  1   2   3   4
+//
+//  ((1 + 2) * (3 * 4))
+
+::std::string BinaryOperation::to_infix_string() const
+{
+   return ::std::format("({} {} {})", left_->to_infix_string(), S_op_names[op_], right_->to_infix_string());
+}
+
+::std::string BinaryOperation::to_prefix_string() const
+{
+   return ::std::format("({} {} {})", S_op_names[op_], left_->to_prefix_string(), right_->to_prefix_string());
+}
 
 class IdentifierExpression : public Expression {
  public:
@@ -228,23 +301,15 @@ class NumericLiteral : public Expression {
    ::std::uintmax_t value_;
 };
 
-
+// Here is a sort of pseudo-BNF for what's being parsed.
+//
 // expression <- term | term ( + | - ) expression
-// term <- factor | factor ( * | / ) term | "(" expression ")"
-// factor <- identifer | numeric_literal
-
-
-using toklist_t = ::std::vector<Tokens::AnyToken>;
-using parse_result_t = ::std::pair<exprptr_t, toklist_t::iterator>;
-
-parse_result_t
-parse_term(toklist_t::iterator start, toklist_t::iterator finish);
-parse_result_t
-parse_factor(toklist_t::iterator start, toklist_t::iterator finish);
+// term <- factor | factor ( * | / ) term
+// factor <- identifer | numeric_literal | "(" expression ")"
 
 parse_result_t parse_expression(
-   ::std::vector<Tokens::AnyToken>::iterator start,
-   ::std::vector<Tokens::AnyToken>::iterator finish
+   toklist_t::iterator start,
+   toklist_t::iterator finish
    )
 {
    if (start == finish) {
@@ -259,8 +324,7 @@ parse_result_t parse_expression(
    }
    auto const &op = *remainder;
    if (!::std::holds_alternative<Tokens::Operator>(op)) {
-      ::std::cerr << "Expected operator, parse aborted.\n";
-      return parse_result_t{nullptr, finish};
+      return parse_result_t{::std::move(term), remainder};
    }
    auto const &opval = ::std::get<Tokens::Operator>(op).value_;
    if (opval != Tokens::Operator::Plus && opval != Tokens::Operator::Minus) {
@@ -296,14 +360,11 @@ parse_term(toklist_t::iterator start, toklist_t::iterator finish)
    }
    auto const &op = *remainder;
    if (!::std::holds_alternative<Tokens::Operator>(op)) {
-      ::std::cerr << "Expected operator, parse aborted.\n";
-      return {nullptr, finish};
+      return parse_result_t{::std::move(factor), remainder};
    }
    auto const &opval = ::std::get<Tokens::Operator>(op).value_;
    if (opval != Tokens::Operator::Multiply && opval != Tokens::Operator::Divide) {
-      ::std::cerr << "Expected * or /, parse aborted.\n";
-      ::std::cerr << "This is likely a programming error.\n";
-      return {nullptr, finish};
+      return parse_result_t{::std::move(factor), remainder};
    }
    ++remainder;
    auto [rfactor, rremainder] = parse_term(remainder, finish);
@@ -334,6 +395,25 @@ parse_result_t parse_factor(toklist_t::iterator start, toklist_t::iterator finis
          ::std::make_unique<NumericLiteral>(num->value_),
          ::std::next(start)
       };
+   } else if (auto const op = ::std::get_if<Tokens::Paren>(&tok)) {
+      if (op->value_ == Tokens::Paren::Open) {
+         ++start;
+         auto [expr, remainder] = parse_expression(start, finish);
+         if (remainder == finish) {
+            ::std::cerr << "Expected expression, parse aborted.\n";
+            return {nullptr, finish};
+         }
+         if (auto const opclose = ::std::get_if<Tokens::Paren>(&(*remainder))) {
+            if (opclose->value_ == Tokens::Paren::Close) {
+               return {::std::move(expr), ::std::next(remainder)};
+            }
+            ::std::cerr << "Expected closing paren, parse aborted.\n";
+            return {nullptr, finish};
+         } else {
+            ::std::cerr << "Expected closing paren, parse aborted.\n";
+            return {nullptr, finish};
+         }
+      }
    }
    ::std::cerr << "Expected factor, parse aborted.\n";
    return {nullptr, finish};
