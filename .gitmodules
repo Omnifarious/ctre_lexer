@@ -1,3 +1,6 @@
 [submodule "ctre"]
 	path = ctre
-	url = git@github.com:hanickadot/compile-time-regular-expressions.git
+	url = https://github.com/hanickadot/compile-time-regular-expressions.git
+[submodule "Catch2"]
+	path = Catch2
+	url = https://github.com/catchorg/Catch2.git
