@@ -16,5 +16,11 @@ add_executable(lexer_test lexer_test.cpp)
 target_compile_features(lexer_test PUBLIC cxx_std_23)
 target_link_libraries(lexer_test PRIVATE ctre::ctre)
 
+file(GLOB TEST_SOURCES "tests/*.cpp")
+add_executable(all_tests ${TEST_SOURCES})
+target_compile_features(all_tests PUBLIC cxx_std_23)
+target_link_libraries(all_tests PRIVATE Catch2::Catch2WithMain ctre::ctre)
+
 include(CTest)
 include(Catch)
+catch_discover_tests(all_tests)
