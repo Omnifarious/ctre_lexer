@@ -12,47 +12,6 @@ using s_iter_t = ::std::istreambuf_iterator<char>;
 using adapter4  = input_to_forward_range_adapter<s_iter_t, 4>;   // 16
 using adapter8  = input_to_forward_range_adapter<s_iter_t, 8>;   // 256
 
-SCENARIO("The adapter and raw input iterator iterate over the same file.")
-{
-   GIVEN("An input file with known test data is opened twice")
-   {
-      const char input_file[] = "data/ringbufin.txt";
-      REQUIRE(::std::filesystem::exists(input_file));
-      REQUIRE(::std::filesystem::is_regular_file(input_file));
-      REQUIRE(::std::filesystem::file_size(input_file) > 10000);
-      ::std::ifstream tdata(input_file, ::std::ios::in);
-      REQUIRE(tdata.is_open());
-      REQUIRE(tdata.good());
-      REQUIRE(tdata.peek() != EOF);
-      ::std::ifstream tcheck(input_file, ::std::ios::in);
-      REQUIRE(tcheck.is_open());
-      REQUIRE(tcheck.good());
-      REQUIRE(tcheck.peek() != EOF);
-      WHEN("A ring buffer adapter wraps the input iterator for one opened instance.")
-      {
-         using s_iter_t = ::std::istreambuf_iterator<char>;
-         auto adapter = input_to_forward_range_adapter{s_iter_t{tdata}, s_iter_t{}};
-         auto check_iter = s_iter_t{tcheck};
-         auto const check_end = s_iter_t{};
-         AND_WHEN("Another input iterator is created for the other opened instance.")
-         {
-            using iter_t = decltype(adapter)::iterator;
-            iter_t finger = adapter.begin();
-            iter_t finished = adapter.end();
-            THEN("The two iterators should point at the same thing when iterated in tandem.")
-            {
-               while (finger != finished) {
-                  REQUIRE(check_iter != check_end);
-                  REQUIRE(*finger == *check_iter);
-                  ++finger;
-                  ++check_iter;
-               }
-            }
-         }
-      }
-   }
-}
-
 SCENARIO("Empty input yields empty range")
 {
    GIVEN("An empty stream")
@@ -201,6 +160,37 @@ SCENARIO("Multiple buffer sizes behave identically")
       for (auto c : a2) out2.push_back(c);
 
       THEN("outputs are identical and equal to input") {
+         REQUIRE(out1 == payload);
+         REQUIRE(out2 == payload);
+         REQUIRE(out1 == out2);
+      }
+   }
+}
+
+SCENARIO("The adapter and raw input iterator iterate over the same file.")
+{
+   GIVEN("A long string and an input iterator and an adaptor iterator")
+   {
+      ::std::string payload(1000, '\x7f'); // non-ASCII to avoid accidental text logic
+      ::std::istringstream ss(payload);
+
+      auto adapter = adapter8{s_iter_t{ss}, s_iter_t{}};
+      auto check_iter = s_iter_t{ss};
+      auto const check_end = s_iter_t{};
+      auto aditer = adapter.begin();
+      auto const adend = adapter.end();
+      ::std::string out1, out2;
+      AND_WHEN("The two iterators are iterated in tandem.")
+      {
+         while (aditer != adend) {
+            out1.push_back(*aditer++);
+            out2.push_back(*check_iter++);
+         }
+      }
+      THEN("The two iterators should be at the end, and the sequence iterated over should be the same.")
+      {
+         REQUIRE(aditer == adend);
+         REQUIRE(check_iter == check_end);
          REQUIRE(out1 == payload);
          REQUIRE(out2 == payload);
          REQUIRE(out1 == out2);
