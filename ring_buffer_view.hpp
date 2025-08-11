@@ -16,6 +16,13 @@
 #ifndef CHUNK_RANGE_HPP
 #define CHUNK_RANGE_HPP
 
+class buffer_overflow_error : public ::std::runtime_error {
+ public:
+   buffer_overflow_error() : runtime_error("Ring buffer overflow.")
+   {
+   }
+};
+
 template<::std::input_iterator I, ::std::uint8_t size_log2 = 13>
 class input_to_forward_range_adapter {
    static_assert(size_log2 >= 4 && size_log2 <= 28,
@@ -28,13 +35,6 @@ public:
    static constexpr auto bufsize = ::std::size_t{1U} << size_log2;
    using gen_t = ::std::uint64_t;
    static constexpr auto end_generation = ::std::numeric_limits<gen_t>::max();
-
-   class buffer_overflow_error : public ::std::runtime_error {
-   public:
-      buffer_overflow_error() : runtime_error("Ring buffer overflow.")
-      {
-      }
-   };
 
    explicit input_to_forward_range_adapter(I const &start, I const &end)
       : input_(start), end_(end)
@@ -141,11 +141,13 @@ public:
 
    iterator begin()
    {
-      if (input_ == end_) {
+      // (write_pos_ == 0 && generation_ == 0) means the first character
+      // couldn't be read and the file is empty.
+      if (input_ != end_ || !(write_pos_ == 0 && generation_ == 0)) {
+         return iterator(this, 0, 0);
+      } else {
          return end();
       }
-      assert(write_pos_ > 0);
-      return iterator(this, 0, 0);
    }
 
    iterator end()
