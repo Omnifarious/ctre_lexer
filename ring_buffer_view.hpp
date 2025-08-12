@@ -13,8 +13,8 @@
 #include <limits>
 #include <cassert>
 
-#ifndef CHUNK_RANGE_HPP
-#define CHUNK_RANGE_HPP
+#ifndef RING_BUFFER_VIEW_HPP
+#define RING_BUFFER_VIEW_HPP
 
 class buffer_overflow_error : public ::std::runtime_error {
  public:
@@ -32,9 +32,10 @@ public:
    struct iterator;
    friend struct iterator;
    using value_type = typename I::value_type;
-   static constexpr auto bufsize = ::std::size_t{1U} << size_log2;
-   using gen_t = ::std::uint64_t;
-   static constexpr auto end_generation = ::std::numeric_limits<gen_t>::max();
+   using size_type = ::std::uint64_t; // 2**64 - 1
+   using difference_type = ::std::int64_t;  //  -2**63 ..  2**63 - 1
+   static constexpr auto bufsize = size_type{1U} << size_log2;
+   static constexpr auto sentinel_end = ::std::numeric_limits<size_type>::max();
 
    explicit input_to_forward_range_adapter(I const &start, I const &end)
       : input_(start), end_(end)
@@ -54,13 +55,11 @@ public:
       value_type operator *() const
       {
          auto const &p = *parent_;
-         if (generation_ == end_generation) {
+         if (combined_pos_ == sentinel_end) {
             ::std::unreachable();
          }
-         if (generation_ == p.generation_ && pos_ < p.write_pos_) {
-            return p.buffer_[pos_];
-         } else if (generation_ < p.generation_ && pos_ >= p.write_pos_) {
-            return p.buffer_[pos_];
+         if (p.combined_pos_ - combined_pos_ < bufsize) {
+            return p.buffer_[read_pos()];
          } else {
             throw buffer_overflow_error();
          }
@@ -69,24 +68,17 @@ public:
       iterator &operator ++()
       {
          auto &p = *parent_;
-         if (generation_ == end_generation) {
+         if (combined_pos_ == sentinel_end) {
             return *this;
          }
-         ++pos_;
-         if (pos_ >= bufsize) {
-            pos_ = 0;
-            ++generation_;
-         }
-         if (generation_ > p.generation_ ||
-             generation_ == p.generation_ && pos_ >= p.write_pos_) {
+         if (++combined_pos_ >= p.combined_pos_) {
             if (!p.next_character()) {
-               generation_ = end_generation;
+               combined_pos_ = sentinel_end;
                return *this;
             }
          }
          assert(
-            generation_ == p.generation_ && (generation_ == end_generation || pos_ < p.write_pos_) ||
-            generation_ < p.generation_
+            combined_pos_ < p.combined_pos_
          );
          return *this;
       }
@@ -102,20 +94,13 @@ public:
 
       bool operator ==(iterator const &b) const
       {
-         if (parent_ == nullptr) {
-            return false;
-         }
-         if (generation_ == end_generation && b.generation_ == end_generation) {
+         if (combined_pos_ == sentinel_end && b.combined_pos_ == sentinel_end) {
             return true;
          }
          if (parent_ != b.parent_) {
             return false;
-         } else if (generation_ != b.generation_) {
-            return false;
-         } else if (pos_ != b.pos_) {
-            return false;
          }
-         return true;
+         return combined_pos_ == b.combined_pos_;
       }
 
       bool operator !=(iterator const &b) const
@@ -124,27 +109,32 @@ public:
       }
 
    protected:
-      iterator(
-         input_to_forward_range_adapter *parent,
-         ::std::uint64_t generation, ::std::size_t pos
-      )
-         : parent_(parent), generation_(generation), pos_(pos)
+      iterator(input_to_forward_range_adapter *parent, size_type combined_pos)
+         : parent_(parent), combined_pos_(combined_pos)
       {
          assert(parent != nullptr);
       }
 
    private:
       input_to_forward_range_adapter *parent_ = nullptr;
-      ::std::uint64_t generation_ = end_generation;
-      ::std::size_t pos_ = 0U;
+      size_type combined_pos_ = sentinel_end;
+
+      size_type generation() const
+      {
+         return combined_pos_ >> size_log2;
+      }
+      size_type read_pos() const
+      {
+         return combined_pos_ & S_mask;
+      }
    };
 
    iterator begin()
    {
-      // (write_pos_ == 0 && generation_ == 0) means the first character
-      // couldn't be read and the file is empty.
-      if (input_ != end_ || !(write_pos_ == 0 && generation_ == 0)) {
-         return iterator(this, 0, 0);
+      // combined_pos_ == 0 means the file is empty because it wasn't able to
+      // even read the first character.
+      if (input_ != end_ || combined_pos_ != 0) {
+         return iterator(this, 0U);
       } else {
          return end();
       }
@@ -152,30 +142,35 @@ public:
 
    iterator end()
    {
-      return iterator(this, end_generation, 0);
+      return iterator(this, sentinel_end);
    }
 
 private:
    static constexpr auto S_mask = bufsize - 1;
    using buf_t = ::std::array<value_type, bufsize>;
-   using bufsize_t = typename buf_t::size_type;
    buf_t buffer_;
-   bufsize_t write_pos_ = 0;
-   ::std::uint64_t generation_ = 0;
+   size_type combined_pos_ = 0;
    I input_;
    I const end_;
 
+   size_type generation() const
+   {
+      return combined_pos_ >> size_log2;
+   }
+   size_type write_pos() const
+   {
+      return combined_pos_ & S_mask;
+   }
    bool next_character()
    {
       if (input_ == end_) {
          return false;
       }
-      if (write_pos_ >= bufsize) {
-         write_pos_ = 0;
-         ++generation_;
+      buffer_[write_pos()] = *input_++;
+      ++combined_pos_;
+      if (combined_pos_ > ::std::numeric_limits<difference_type>::max()) {
+         throw ::std::overflow_error("Too many input characters.");
       }
-      buffer_[write_pos_++] = *input_;
-      ++input_;
       return true;
    }
 };
