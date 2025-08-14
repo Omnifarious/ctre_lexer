@@ -169,11 +169,21 @@ SCENARIO("The adapter and raw input iterator iterate over the same file.")
 {
    GIVEN("A long string and an input iterator and an adaptor iterator")
    {
-      ::std::string payload(1000, '\x7f'); // non-ASCII to avoid accidental text logic
-      ::std::istringstream ss(payload);
+      ::std::string payload(1000, '\x7f'); // filler that will be replaced
 
-      auto adapter = adapter8{s_iter_t{ss}, s_iter_t{}};
-      auto check_iter = s_iter_t{ss};
+      {
+         // This is to make catching errors in the iterator advancement easier.
+         char d = 0;
+         for (char &c: payload) {
+            c = d++;
+         }
+      }
+
+      ::std::istringstream ss1(payload);
+      ::std::istringstream ss2(payload);
+
+      auto adapter = adapter8{s_iter_t{ss1}, s_iter_t{}};
+      auto check_iter = s_iter_t{ss2};
       auto const check_end = s_iter_t{};
       auto aditer = adapter.begin();
       auto const adend = adapter.end();
@@ -184,14 +194,14 @@ SCENARIO("The adapter and raw input iterator iterate over the same file.")
             out1.push_back(*aditer++);
             out2.push_back(*check_iter++);
          }
-      }
-      THEN("The two iterators should be at the end, and the sequence iterated over should be the same.")
-      {
-         REQUIRE(aditer == adend);
-         REQUIRE(check_iter == check_end);
-         REQUIRE(out1 == payload);
-         REQUIRE(out2 == payload);
-         REQUIRE(out1 == out2);
+         THEN("The two iterators should be at the end, and the sequence iterated over should be the same.")
+         {
+            REQUIRE(aditer == adend);
+            REQUIRE(check_iter == check_end);
+            REQUIRE(out1 == payload);
+            REQUIRE(out2 == payload);
+            REQUIRE(out1 == out2);
+         }
       }
    }
 }
