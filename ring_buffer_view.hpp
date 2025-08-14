@@ -45,7 +45,6 @@ public:
 
    struct iterator {
       friend class input_to_forward_range_adapter;
-      using difference_type = ::std::ptrdiff_t;
       using value_type = input_to_forward_range_adapter::value_type;
       using iterator_category = ::std::forward_iterator_tag;
       using reference = value_type const &;
@@ -63,6 +62,14 @@ public:
          } else {
             throw buffer_overflow_error();
          }
+      }
+
+      difference_type operator -(iterator const &b) const
+      {
+         if (parent_ != b.parent_) {
+            ::std::unreachable();
+         }
+         return combined_pos_ - b.combined_pos_;
       }
 
       iterator &operator ++()
