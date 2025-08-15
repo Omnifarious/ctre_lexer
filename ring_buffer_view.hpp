@@ -5,7 +5,6 @@
 // Licensed under the GNU General Public License v3.0 - see LICENSE file.
 
 #include <iostream>
-#include <cstddef>
 #include <cstdint>
 #include <ranges>
 #include <array>
@@ -48,10 +47,12 @@ public:
       using value_type = input_to_forward_range_adapter::value_type;
       using iterator_category = ::std::forward_iterator_tag;
       using reference = value_type const &;
+      using pointer = value_type const *;
+      using difference_type = input_to_forward_range_adapter::difference_type;
 
       iterator() = default;
 
-      value_type operator *() const
+      reference operator *() const
       {
          auto const &p = *parent_;
          if (combined_pos_ == sentinel_end) {
@@ -62,6 +63,11 @@ public:
          } else {
             throw buffer_overflow_error();
          }
+      }
+
+      pointer operator ->() const
+      {
+         return &operator *();
       }
 
       difference_type operator -(iterator const &b) const
