@@ -11,6 +11,8 @@
 #include <string>
 #include <format>
 #include <memory>
+#include <cstdlib>
+#include <unordered_map>
 #include <type_traits>
 #include <fmt/format.h>
 
@@ -23,7 +25,9 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
    "(?<operator>[+*/]|-)|"
-   "(?<paren>[()])"
+   "(?<paren>[()])|"
+   "(?<semicolon>;)|"
+   "(?<equal>=)"
    ")"
 };
 
@@ -53,23 +57,31 @@ struct Paren : Base {
    enum { Open, Close } value_;
 };
 
-using AnyToken = ::std::variant<UnsignedInteger, Identifier, Operator, Paren>;
+struct Semicolon : Base {};
+
+struct Equal : Base {};
+
+using AnyToken = ::std::variant<
+   UnsignedInteger, Identifier, Operator, Paren, Semicolon, Equal
+>;
 
 }
 
-class Expression {
+class ParseNode {
 public:
-   virtual ~Expression() = default;
+   virtual ~ParseNode() = default;
 
    virtual ::std::uintmax_t evaluate() const = 0;
    virtual ::std::string to_infix_string() const = 0;
    virtual ::std::string to_prefix_string() const = 0;
 };
 
-using exprptr_t = ::std::unique_ptr<Expression>;
+using exprptr_t = ::std::unique_ptr<ParseNode>;
 using toklist_t = ::std::vector<Tokens::AnyToken>;
 using parse_result_t = ::std::pair<exprptr_t, toklist_t::iterator>;
 
+parse_result_t
+parse_statement(toklist_t::iterator start, toklist_t::iterator finish);
 parse_result_t
 parse_expression(toklist_t::iterator start, toklist_t::iterator finish);
 parse_result_t
@@ -166,6 +178,13 @@ int main()
                assert(!"Unexpected parenthesis");
                break;
             }
+         } else if (auto const &semicolon = match.get<"semicolon">()) {
+            tokens.emplace_back(Tokens::Semicolon{semicolon.to_string()});
+         } else if (auto const &equal = match.get<"equal">()) {
+            tokens.emplace_back(Tokens::Equal{equal.to_string()});
+         } else {
+            ::std::cerr << "Unexpected token: " << match.to_string() << "\n";
+            ::std::exit(1);
          }
       }
    }
@@ -188,18 +207,26 @@ int main()
          using sv = ::std::string_view;
          sv const paren_name[] = {"open"sv, "close"sv};
          ::std::cout << format("par: \"{}\" -> {}\n", t.orig_text_, paren_name[t.value_]);
+      },
+      [](Tokens::Semicolon const &t) {
+         ::std::cout << format("sem: \"{}\"\n", t.orig_text_);
+      },
+      [](Tokens::Equal const &t) {
+         ::std::cout << format("equ: \"{}\"\n", t.orig_text_);
       }
    };
    for (auto const &token: tokens) {
       ::std::visit(visitor, token);
    }
-   auto const [expr, remainder] = parse_expression(tokens.begin(), tokens.end());
+   auto const [expr, remainder] = parse_statement(tokens.begin(), tokens.end());
    if (remainder != tokens.end()) {
       ::std::cerr << "Parse error: unexpected token at end of input.\n";
    }
    if (expr) {
-      ::std::cout << "Expression: " << expr->to_prefix_string() << "\n";
-      ::std::cout << "    Result: " << expr->evaluate() << "\n";
+      ::std::cout << "Program:\n======\n"
+                  << expr->to_prefix_string()
+                  << "\n======\n";
+      ::std::cout << "    Result:\n" << expr->evaluate() << "\n";
    } else {
       ::std::cerr << "Parse error: no expression parsed.\n";
    }
@@ -207,8 +234,9 @@ int main()
    return 0;
 }
 
+static ::std::unordered_map<::std::string, ::std::uint64_t> identifiers_S;
 
-class BinaryOperation : public Expression {
+class BinaryOperation : public ParseNode {
  public:
    using OpType = decltype(::std::declval<Tokens::Operator>().value_);
    BinaryOperation(OpType op, exprptr_t left, exprptr_t right) :
@@ -274,13 +302,13 @@ class BinaryOperation : public Expression {
    return ::std::format("({} {} {})", S_op_names[op_], left_->to_prefix_string(), right_->to_prefix_string());
 }
 
-class IdentifierExpression : public Expression {
+class IdentifierExpression : public ParseNode {
  public:
    explicit IdentifierExpression(Tokens::Identifier const &idtok) :
        name_(idtok.value_)
    {}
 
-   ::std::uintmax_t evaluate() const override { return 0; }
+   ::std::uintmax_t evaluate() const override;
    ::std::string to_infix_string() const override { return name_; }
    ::std::string to_prefix_string() const override { return name_; }
 
@@ -288,24 +316,166 @@ class IdentifierExpression : public Expression {
    ::std::string name_;
 };
 
-class NumericLiteral : public Expression {
+::std::uintmax_t IdentifierExpression::evaluate() const
+{
+   auto const it = identifiers_S.find(name_);
+   if (it == identifiers_S.end()) {
+      return 0;
+   }
+   return it->second;
+}
+
+class NumericLiteral : public ParseNode {
  public:
-   NumericLiteral(::std::uintmax_t value) : value_(value)
-   {}
+   explicit NumericLiteral(::std::uintmax_t value) : value_(value)
+   { }
 
    ::std::uintmax_t evaluate() const override { return value_; }
    ::std::string to_infix_string() const override { return ::std::to_string(value_); }
    ::std::string to_prefix_string() const override { return ::std::to_string(value_); }
 
  private:
-   ::std::uintmax_t value_;
+   ::std::uintmax_t const value_;
 };
+
+parse_result_t parse_statement(
+   toklist_t::iterator start,
+   toklist_t::iterator finish
+   );
+
+class StatementList : public ParseNode {
+ public:
+   StatementList() = default;
+
+   ::std::uintmax_t evaluate() const override;
+   ::std::string to_infix_string() const override;
+   ::std::string to_prefix_string() const override;
+
+ private:
+   friend parse_result_t parse_statement(
+      toklist_t::iterator start,
+      toklist_t::iterator finish
+   );
+
+   ::std::vector<exprptr_t> statements_;
+};
+
+::std::uintmax_t StatementList::evaluate() const
+{
+   int i = 0;
+   for (auto const &statement: statements_) {
+      ::std::cout << ::std::format("Statement {}: {}\n", i++, statement->evaluate());
+   }
+   return 0;
+}
+
+::std::string StatementList::to_infix_string() const
+{
+   ::std::string result;
+   for (auto const &statement: statements_) {
+      result += statement->to_infix_string();
+      result += ";\n";
+   }
+   return result;
+}
+
+::std::string StatementList::to_prefix_string() const
+{
+   ::std::string result = "(progn\n";
+   for (auto const &statement: statements_) {
+      result += "    ";
+      result += statement->to_prefix_string();
+      result += "\n";
+   }
+   result += ")";
+   return result;
+}
+
+class AssignmentStatement : public ParseNode {
+ public:
+   AssignmentStatement(
+      Tokens::Identifier const &id, exprptr_t expression
+   )
+         : id_(id.value_), expression_(::std::move(expression))
+   {}
+
+   ::std::uintmax_t evaluate() const override;
+   ::std::string to_infix_string() const override;
+   ::std::string to_prefix_string() const override;
+
+ private:
+   ::std::string id_;
+   exprptr_t expression_;
+};
+
+::std::uintmax_t AssignmentStatement::evaluate() const
+{
+   auto const value = expression_->evaluate();
+   identifiers_S[id_] = value;
+   return 0;
+}
+
+::std::string AssignmentStatement::to_infix_string() const
+{
+   return ::std::format("{} = {};", id_, expression_->to_infix_string());
+}
+
+::std::string AssignmentStatement::to_prefix_string() const
+{
+   return ::std::format("(setq {} {})", id_, expression_->to_prefix_string());
+}
 
 // Here is a sort of pseudo-BNF for what's being parsed.
 //
+// sequence = statement ; [ sequence ]
+// statement = expression | identifer = expression
 // expression <- term | term ( + | - ) expression
 // term <- factor | factor ( * | / ) term
 // factor <- identifer | numeric_literal | "(" expression ")"
+
+parse_result_t parse_statement(
+   toklist_t::iterator start,
+   toklist_t::iterator finish
+   )
+{
+   auto statements = ::std::make_unique<StatementList>();
+
+   while (start != finish) {
+      exprptr_t statement;
+      toklist_t::iterator after;
+      if (auto [expr, remainder] = parse_expression(start, finish); expr) {
+         statement = ::std::move(expr);
+         after = remainder;
+      } else if (::std::holds_alternative<Tokens::Identifier>(*start)) {
+         auto const &idtok = ::std::get<Tokens::Identifier>(*start);
+         ++start;
+         if (start != finish) {
+            if (!::std::holds_alternative<Tokens::Equal>(*start)) {
+               ::std::cerr << "Expected =, aborting.\n";
+               return parse_result_t{nullptr, finish};
+            }
+            ++start;
+            auto [expr, remainder] = parse_expression(start, finish);
+            if (!expr) {
+               ::std::cerr << "Didn't find expression after = in assignment, aborting!\n";
+               return parse_result_t{nullptr, finish};
+            }
+            statement = ::std::make_unique<AssignmentStatement>(idtok, ::std::move(expr));
+            after = remainder;
+         }
+      } else {
+         ::std::cerr << "Not expression or assignment statement, aborting.";
+         return parse_result_t{nullptr, finish};
+      }
+      if (!::std::holds_alternative<Tokens::Semicolon>(*after)) {
+         ::std::cerr << "Expected semicolon, aborting.\n";
+         return parse_result_t{nullptr, finish};
+      }
+      start = ++after;
+      statements->statements_.emplace_back(::std::move(statement));
+   }
+   return parse_result_t{::std::move(statements), finish};
+}
 
 parse_result_t parse_expression(
    toklist_t::iterator start,
@@ -323,6 +493,9 @@ parse_result_t parse_expression(
       return parse_result_t{nullptr, finish};
    }
    auto const &op = *remainder;
+   if (::std::holds_alternative<Tokens::Equal>(op)) {
+      return parse_result_t{nullptr, finish};
+   }
    if (!::std::holds_alternative<Tokens::Operator>(op)) {
       return parse_result_t{::std::move(term), remainder};
    }
