@@ -2,146 +2,19 @@
 // Created on 2025-06-29.
 // Licensed under the GNU General Public License v3.0 - see LICENSE file.
 
-#include <ctre.hpp>
+#include "tokens.hpp"
 #include <iostream>
-#include "ring_buffer_view.hpp"
-#include <variant>
-#include <iterator>
-#include <vector>
 #include <string>
+#include <string_view>
 #include <format>
 #include <memory>
+#include <utility>
 #include <cstdlib>
 #include <unordered_map>
 #include <type_traits>
-#include <fmt/format.h>
+#include <cassert>
 
 using namespace ::std::literals::string_view_literals;
-
-namespace Tokens {
-
-static constexpr auto lex_patterns = ctll::fixed_string{
-   "(?m)\\s*(?:"
-   "(?<int_hex>0x[0-9a-fA-F]+)|"
-   "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
-   "(?<int_dec>(?:[1-9][0-9]*)|0)|"
-   "(?<identifier>\\w(?:\\w|\\d)*)|"
-   "(?<operator>[+*/]|-)|"
-   "(?<paren>[()])|"
-   "(?<semicolon>;)|"
-   "(?<equal>=)|"
-   "(?<unknown>\\S+)"
-   ")"
-};
-
-auto const tokenizer_re = ::ctre::tokenize<
-   lex_patterns
->;
-
-struct Base {
-   ::std::string orig_text_;
-};
-
-struct UnsignedInteger : Base {
-   ::std::uintmax_t value_;
-};
-
-struct Identifier : Base {
-   ::std::string value_;
-};
-
-struct Operator : Base {
-   enum { Plus, Minus, Multiply, Divide } value_;
-};
-
-struct Paren : Base {
-   enum { Open, Close } value_;
-};
-
-struct Semicolon : Base {};
-
-struct Equal : Base {};
-
-using AnyToken = ::std::variant<
-   UnsignedInteger, Identifier, Operator, Paren, Semicolon, Equal
->;
-
-using toklist_t = ::std::vector<Tokens::AnyToken>;
-
-class tokenize_error : public ::std::runtime_error {
-public:
-   using ::std::runtime_error::runtime_error;
-};
-
-template <::std::input_iterator I>
-Tokens::toklist_t tokenize_input(I begin, I end)
-{
-   using ::std::stoull;
-   using ::std::get;
-   ::std::vector<Tokens::AnyToken> tokens;
-   input_to_forward_range_adapter adapter{begin, end};
-   for (auto const &match: tokenizer_re(adapter.begin(), adapter.end())) {
-      if (match) {
-         //::std::clog << "got one\n" << ::std::flush;
-         //::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
-         if (auto const &dec = match.template get<"int_dec">()) {
-            auto const num = dec.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
-         } else if (auto const &hex = match.template get<"int_hex">()) {
-            auto const num = hex.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 16)});
-         } else if (auto const &oct = match.template get<"int_oct">()) {
-            auto const num = oct.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
-         } else if (auto const &id = match.template get<"identifier">()) {
-            tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
-         } else if (auto const &op = match.template get<"operator">()) {
-            switch (op.to_string()[0]) {
-               case '+':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Plus});
-                  break;
-               case '-':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Minus});
-                  break;
-               case '*':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Multiply});
-                  break;
-               case '/':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Divide});
-                  break;
-               default:
-                  assert(!"Unexpected operator");
-                  break;
-            }
-         } else if (auto const &paren = match.template get<"paren">()) {
-            switch (paren.to_string()[0]) {
-               case '(':
-                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Open});
-                  break;
-               case ')':
-                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Close});
-                  break;
-               default:
-                  assert(!"Unexpected parenthesis");
-                  break;
-            }
-         } else if (auto const &semicolon = match.template get<"semicolon">()) {
-            tokens.emplace_back(Tokens::Semicolon{semicolon.to_string()});
-         } else if (auto const &equal = match.template get<"equal">()) {
-            tokens.emplace_back(Tokens::Equal{equal.to_string()});
-         } else {
-            throw tokenize_error("Unexpected token: " + match.to_string());
-         }
-      }
-   }
-   return tokens;
-}
-
-// helper type for the visitor
-template<class... Ts>
-struct overloads : Ts... { using Ts::operator()...; };
-
-}
 
 class ParseNode {
 public:
