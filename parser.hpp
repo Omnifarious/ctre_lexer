@@ -12,6 +12,16 @@
 #include "tokens.hpp"
 
 namespace Parser {
+
+// Here is a sort of pseudo-BNF for what's being parsed.
+//
+// sequence = statement ; [ sequence ]
+// statement = expression | identifer = expression
+// expression <- term | term ( + | - ) expression
+// term <- factor | factor ( * | / ) term
+// factor <- identifer | numeric_literal | "(" expression ")"
+
+
 class ParseNode {
 public:
    virtual ~ParseNode() = default;

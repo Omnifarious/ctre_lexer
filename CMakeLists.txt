@@ -17,7 +17,8 @@ add_executable(lexer_test lexer_test.cpp
 target_compile_features(lexer_test PUBLIC cxx_std_23)
 target_link_libraries(lexer_test PRIVATE ctre::ctre)
 
-add_executable(all_tests tests/tokenizer_test.cpp tests/ring_buf_test.cpp)
+add_executable(all_tests tests/tokenizer_test.cpp tests/ring_buf_test.cpp
+        tests/parser_test.cpp parser.cpp)
 target_compile_features(all_tests PUBLIC cxx_std_23)
 target_link_libraries(all_tests PRIVATE Catch2::Catch2WithMain ctre::ctre)
 

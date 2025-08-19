@@ -192,21 +192,13 @@ private:
 
 ::std::string AssignmentStatement::to_infix_string() const
 {
-   return ::std::format("{} = {};", id_, expression_->to_infix_string());
+   return ::std::format("{} = {}", id_, expression_->to_infix_string());
 }
 
 ::std::string AssignmentStatement::to_prefix_string() const
 {
    return ::std::format("(setq {} {})", id_, expression_->to_prefix_string());
 }
-
-// Here is a sort of pseudo-BNF for what's being parsed.
-//
-// sequence = statement ; [ sequence ]
-// statement = expression | identifer = expression
-// expression <- term | term ( + | - ) expression
-// term <- factor | factor ( * | / ) term
-// factor <- identifer | numeric_literal | "(" expression ")"
 
 parse_result_t parse_statement(
    Tokens::toklist_t::iterator start,
