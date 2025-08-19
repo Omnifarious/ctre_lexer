@@ -136,10 +136,12 @@ private:
 ::std::uintmax_t StatementList::evaluate() const
 {
    int i = 0;
+   decltype(statements_[0]->evaluate()) result = 0U;
    for (auto const &statement: statements_) {
-      ::std::cout << ::std::format("Statement {}: {}\n", i++, statement->evaluate());
+      result = statement->evaluate();
+      ::std::cout << ::std::format("Statement {}: {}\n", i++, result);
    }
-   return 0;
+   return result;
 }
 
 ::std::string StatementList::to_infix_string() const
