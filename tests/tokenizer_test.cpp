@@ -10,6 +10,7 @@
 
 SCENARIO("Fixed string generates expected list of tokens.")
 {
+    using Tokens::tokenize_input;
     GIVEN("A simple mathematical expression string")
     {
         std::string input = "x = 42 + 3 * y;";
@@ -136,7 +137,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
         {
             THEN("A parse_error exception is thrown")
             {
-                REQUIRE_THROWS_AS(tokenize_input(input.begin(), input.end()), parse_error);
+                using Tokens::tokenize_error;
+                REQUIRE_THROWS_AS(tokenize_input(input.begin(), input.end()), tokenize_error);
             }
             
             AND_THEN("The exception message contains the unexpected token")

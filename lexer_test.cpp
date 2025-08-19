@@ -18,6 +18,8 @@
 
 using namespace ::std::literals::string_view_literals;
 
+namespace Tokens {
+
 static constexpr auto lex_patterns = ctll::fixed_string{
    "(?m)\\s*(?:"
    "(?<int_hex>0x[0-9a-fA-F]+)|"
@@ -35,8 +37,6 @@ static constexpr auto lex_patterns = ctll::fixed_string{
 auto const tokenizer_re = ::ctre::tokenize<
    lex_patterns
 >;
-
-namespace Tokens {
 
 struct Base {
    ::std::string orig_text_;
@@ -66,37 +66,15 @@ using AnyToken = ::std::variant<
    UnsignedInteger, Identifier, Operator, Paren, Semicolon, Equal
 >;
 
-}
-
-class ParseNode {
-public:
-   virtual ~ParseNode() = default;
-
-   virtual ::std::uintmax_t evaluate() const = 0;
-   virtual ::std::string to_infix_string() const = 0;
-   virtual ::std::string to_prefix_string() const = 0;
-};
-
-using exprptr_t = ::std::unique_ptr<ParseNode>;
 using toklist_t = ::std::vector<Tokens::AnyToken>;
-using parse_result_t = ::std::pair<exprptr_t, toklist_t::iterator>;
 
-parse_result_t
-parse_statement(toklist_t::iterator start, toklist_t::iterator finish);
-parse_result_t
-parse_expression(toklist_t::iterator start, toklist_t::iterator finish);
-parse_result_t
-parse_term(toklist_t::iterator start, toklist_t::iterator finish);
-parse_result_t
-parse_factor(toklist_t::iterator start, toklist_t::iterator finish);
-
-class parse_error : public ::std::runtime_error {
- public:
+class tokenize_error : public ::std::runtime_error {
+public:
    using ::std::runtime_error::runtime_error;
 };
 
 template <::std::input_iterator I>
-::std::vector<Tokens::AnyToken> tokenize_input(I begin, I end)
+Tokens::toklist_t tokenize_input(I begin, I end)
 {
    using ::std::stoull;
    using ::std::get;
@@ -152,7 +130,7 @@ template <::std::input_iterator I>
          } else if (auto const &equal = match.template get<"equal">()) {
             tokens.emplace_back(Tokens::Equal{equal.to_string()});
          } else {
-            throw parse_error("Unexpected token: " + match.to_string());
+            throw tokenize_error("Unexpected token: " + match.to_string());
          }
       }
    }
@@ -163,10 +141,37 @@ template <::std::input_iterator I>
 template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
 
+}
+
+class ParseNode {
+public:
+   virtual ~ParseNode() = default;
+
+   virtual ::std::uintmax_t evaluate() const = 0;
+   virtual ::std::string to_infix_string() const = 0;
+   virtual ::std::string to_prefix_string() const = 0;
+};
+
+using exprptr_t = ::std::unique_ptr<ParseNode>;
+using parse_result_t = ::std::pair<exprptr_t, Tokens::toklist_t::iterator>;
+
+parse_result_t
+parse_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+
+using Tokens::tokenize_input;
+template <class... Ts>
+using overloads = Tokens::overloads<Ts...>;
+
 int main()
 {
    using rawchars_t = ::std::istreambuf_iterator<char>;
-   toklist_t tokens = tokenize_input(
+   Tokens::toklist_t tokens = tokenize_input(
       ::std::istreambuf_iterator<char>{::std::cin},
       ::std::istreambuf_iterator<char>{}
    );
@@ -323,8 +328,8 @@ class NumericLiteral : public ParseNode {
 };
 
 parse_result_t parse_statement(
-   toklist_t::iterator start,
-   toklist_t::iterator finish
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
    );
 
 class StatementList : public ParseNode {
@@ -337,8 +342,8 @@ class StatementList : public ParseNode {
 
  private:
    friend parse_result_t parse_statement(
-      toklist_t::iterator start,
-      toklist_t::iterator finish
+      Tokens::toklist_t::iterator start,
+      Tokens::toklist_t::iterator finish
    );
 
    ::std::vector<exprptr_t> statements_;
@@ -418,15 +423,15 @@ class AssignmentStatement : public ParseNode {
 // factor <- identifer | numeric_literal | "(" expression ")"
 
 parse_result_t parse_statement(
-   toklist_t::iterator start,
-   toklist_t::iterator finish
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
    )
 {
    auto statements = ::std::make_unique<StatementList>();
 
    while (start != finish) {
       exprptr_t statement;
-      toklist_t::iterator after;
+      Tokens::toklist_t::iterator after;
       if (auto [expr, remainder] = parse_expression(start, finish); expr) {
          statement = ::std::move(expr);
          after = remainder;
@@ -462,8 +467,8 @@ parse_result_t parse_statement(
 }
 
 parse_result_t parse_expression(
-   toklist_t::iterator start,
-   toklist_t::iterator finish
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
    )
 {
    if (start == finish) {
@@ -503,7 +508,7 @@ parse_result_t parse_expression(
 }
 
 parse_result_t
-parse_term(toklist_t::iterator start, toklist_t::iterator finish)
+parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
 {
    if (start == finish) {
       return {nullptr, finish};
@@ -536,7 +541,7 @@ parse_term(toklist_t::iterator start, toklist_t::iterator finish)
    }
 }
 
-parse_result_t parse_factor(toklist_t::iterator start, toklist_t::iterator finish)
+parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
 {
    if (start == finish) {
       return {nullptr, finish};
