@@ -12,7 +12,8 @@ add_subdirectory(ctre)
 
 find_package(fmt REQUIRED)
 
-add_executable(lexer_test lexer_test.cpp)
+add_executable(lexer_test lexer_test.cpp
+        parser.cpp)
 target_compile_features(lexer_test PUBLIC cxx_std_23)
 target_link_libraries(lexer_test PRIVATE ctre::ctre)
 
