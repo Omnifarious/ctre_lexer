@@ -90,35 +90,6 @@ parse_term(toklist_t::iterator start, toklist_t::iterator finish);
 parse_result_t
 parse_factor(toklist_t::iterator start, toklist_t::iterator finish);
 
-template <::std::forward_iterator I>
-::std::vector<::std::string> tokenize_tokenizer(I begin, I end)
-{
-   ::std::vector<::std::string> result;
-   for (auto token: tokenizer_re(begin, end)) {
-      if (token) {
-         // ::std::clog << "got one\n";
-         auto const &full_capture = token.to_string();
-         result.emplace_back(full_capture.begin(), full_capture.end());
-      }
-   }
-   return result;
-}
-
-void tokenize_test()
-{
-   using rawchars_t = ::std::istreambuf_iterator<char>;
-   auto tokenize = [](){
-      input_to_forward_range_adapter adapter{
-         rawchars_t{::std::cin}, rawchars_t{}
-      };
-      return tokenize_tokenizer(adapter.begin(), adapter.end());
-   };
-   auto const tokens = tokenize();
-   for (auto const &token: tokens) {
-      ::std::cout << ::std::format(" - [\"{}\"]\n", token);
-   }
-}
-
 class parse_error : public ::std::runtime_error {
  public:
    using ::std::runtime_error::runtime_error;
