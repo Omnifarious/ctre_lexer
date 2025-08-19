@@ -27,7 +27,8 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<operator>[+*/]|-)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
-   "(?<equal>=)"
+   "(?<equal>=)|"
+   "(?<unknown>\\S+)"
    ")"
 };
 
@@ -118,6 +119,75 @@ void tokenize_test()
    }
 }
 
+class parse_error : public ::std::runtime_error {
+ public:
+   using ::std::runtime_error::runtime_error;
+};
+
+template <::std::input_iterator I>
+::std::vector<Tokens::AnyToken> tokenize_input(I begin, I end)
+{
+   using ::std::stoull;
+   using ::std::get;
+   ::std::vector<Tokens::AnyToken> tokens;
+   input_to_forward_range_adapter adapter{begin, end};
+   for (auto const &match: tokenizer_re(adapter.begin(), adapter.end())) {
+      if (match) {
+         //::std::clog << "got one\n" << ::std::flush;
+         //::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
+         if (auto const &dec = match.template get<"int_dec">()) {
+            auto const num = dec.to_string();
+            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
+         } else if (auto const &hex = match.template get<"int_hex">()) {
+            auto const num = hex.to_string();
+            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 16)});
+         } else if (auto const &oct = match.template get<"int_oct">()) {
+            auto const num = oct.to_string();
+            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
+         } else if (auto const &id = match.template get<"identifier">()) {
+            tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
+         } else if (auto const &op = match.template get<"operator">()) {
+            switch (op.to_string()[0]) {
+               case '+':
+                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Plus});
+                  break;
+               case '-':
+                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Minus});
+                  break;
+               case '*':
+                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Multiply});
+                  break;
+               case '/':
+                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Divide});
+                  break;
+               default:
+                  assert(!"Unexpected operator");
+                  break;
+            }
+         } else if (auto const &paren = match.template get<"paren">()) {
+            switch (paren.to_string()[0]) {
+               case '(':
+                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Open});
+                  break;
+               case ')':
+                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Close});
+                  break;
+               default:
+                  assert(!"Unexpected parenthesis");
+                  break;
+            }
+         } else if (auto const &semicolon = match.template get<"semicolon">()) {
+            tokens.emplace_back(Tokens::Semicolon{semicolon.to_string()});
+         } else if (auto const &equal = match.template get<"equal">()) {
+            tokens.emplace_back(Tokens::Equal{equal.to_string()});
+         } else {
+            throw parse_error("Unexpected token: " + match.to_string());
+         }
+      }
+   }
+   return tokens;
+}
+
 // helper type for the visitor
 template<class... Ts>
 struct overloads : Ts... { using Ts::operator()...; };
@@ -125,69 +195,12 @@ struct overloads : Ts... { using Ts::operator()...; };
 int main()
 {
    using rawchars_t = ::std::istreambuf_iterator<char>;
-   input_to_forward_range_adapter adapter{
-      rawchars_t{::std::cin}, rawchars_t{}
-   };
-   auto matches = tokenizer_re(adapter.begin(), adapter.end());
-   toklist_t tokens;
+   toklist_t tokens = tokenize_input(
+      ::std::istreambuf_iterator<char>{::std::cin},
+      ::std::istreambuf_iterator<char>{}
+   );
    using ::std::format;
    using ::std::cout;
-   using ::std::stoull;
-   for (auto const &match: matches) {
-      if (match) {
-         //::std::clog << "got one\n" << ::std::flush;
-         //::std::clog << ::std::format(" - [\"{}\"]\n", match.to_string()) << ::std::flush;
-         if (auto const &dec = match.get<"int_dec">()) {
-            auto const num = dec.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
-         } else if (auto const &hex = match.get<"int_hex">()) {
-            auto const num = hex.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 16)});
-         } else if (auto const &oct = match.get<"int_oct">()) {
-            auto const num = oct.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
-         } else if (auto const &id = match.get<"identifier">()) {
-            tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
-         } else if (auto const &op = match.get<"operator">()) {
-            switch (op.to_string()[0]) {
-             case '+':
-               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Plus});
-               break;
-             case '-':
-               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Minus});
-               break;
-             case '*':
-               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Multiply});
-               break;
-             case '/':
-               tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Divide});
-               break;
-             default:
-               assert(!"Unexpected operator");
-               break;
-            }
-         } else if (auto const &paren = match.get<"paren">()) {
-            switch (paren.to_string()[0]) {
-             case '(':
-               tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Open});
-               break;
-             case ')':
-               tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Close});
-               break;
-             default:
-               assert(!"Unexpected parenthesis");
-               break;
-            }
-         } else if (auto const &semicolon = match.get<"semicolon">()) {
-            tokens.emplace_back(Tokens::Semicolon{semicolon.to_string()});
-         } else if (auto const &equal = match.get<"equal">()) {
-            tokens.emplace_back(Tokens::Equal{equal.to_string()});
-         } else {
-            ::std::cerr << "Unexpected token: " << match.to_string() << "\n";
-            ::std::exit(1);
-         }
-      }
-   }
    const auto visitor = overloads
    {
       [](Tokens::UnsignedInteger const &t) {
