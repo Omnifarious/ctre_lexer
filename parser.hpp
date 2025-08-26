@@ -35,7 +35,7 @@ using exprptr_t = ::std::unique_ptr<ParseNode>;
 using parse_result_t = ::std::pair<exprptr_t, Tokens::toklist_t::iterator>;
 
 parse_result_t
-parse_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_statement_list(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t

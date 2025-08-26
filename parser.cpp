@@ -111,7 +111,7 @@ private:
    ::std::uintmax_t const value_;
 };
 
-parse_result_t parse_statement(
+parse_result_t parse_statement_list(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish
    );
@@ -125,7 +125,7 @@ public:
    ::std::string to_prefix_string() const override;
 
 private:
-   friend parse_result_t parse_statement(
+   friend parse_result_t parse_statement_list(
       Tokens::toklist_t::iterator start,
       Tokens::toklist_t::iterator finish
    );
@@ -200,7 +200,7 @@ private:
    return ::std::format("(setq {} {})", id_, expression_->to_prefix_string());
 }
 
-parse_result_t parse_statement(
+parse_result_t parse_statement_list(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish
    )
@@ -210,30 +210,43 @@ parse_result_t parse_statement(
    while (start != finish) {
       exprptr_t statement;
       Tokens::toklist_t::iterator after;
-      if (auto [expr, remainder] = parse_expression(start, finish); expr) {
-         statement = ::std::move(expr);
-         after = remainder;
-      } else if (::std::holds_alternative<Tokens::Identifier>(*start)) {
-         auto const &idtok = ::std::get<Tokens::Identifier>(*start);
-         ++start;
-         if (start != finish) {
-            if (!::std::holds_alternative<Tokens::Equal>(*start)) {
-               ::std::cerr << "Expected =, aborting.\n";
-               return parse_result_t{nullptr, finish};
+      // Drops through without setting statement if we find an identifier,
+      // but not an equals sign.
+      if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
+         auto const &idtok = *id;
+         auto const after_id = ::std::next(start);
+         if (after_id != finish) {
+            if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
+               auto const after_eq = ::std::next(after_id);
+               if (after_eq != finish) {
+                  auto [expr, remainder] = parse_expression(after_eq, finish);
+                  if (!expr) {
+                     ::std::cerr << "Didn't find expression after = in "
+                                    "assignment, aborting!\n";
+                     return parse_result_t{nullptr, finish};
+                  }
+                  statement = ::std::make_unique<AssignmentStatement>(
+                     idtok, ::std::move(expr)
+                  );
+                  after = remainder;
+               }
             }
-            ++start;
-            auto [expr, remainder] = parse_expression(start, finish);
-            if (!expr) {
-               ::std::cerr << "Didn't find expression after = in assignment, aborting!\n";
-               return parse_result_t{nullptr, finish};
-            }
-            statement = ::std::make_unique<AssignmentStatement>(idtok, ::std::move(expr));
+         }
+      }
+      // If it wasn't identifer = expresion, was it just expression?
+      if (!statement) {
+         if (auto [expr, remainder] = parse_expression(start, finish); expr) {
+            statement = ::std::move(expr);
             after = remainder;
          }
-      } else {
-         ::std::cerr << "Not expression or assignment statement, aborting.";
+      }
+      // It wasn't _any_ of the valid alternatives.
+      if (!statement) {
+         ::std::cerr << "Didn't find expression or assignment statement, "
+                        "aborting.";
          return parse_result_t{nullptr, finish};
       }
+      // We must have a ; between statements.
       if (!::std::holds_alternative<Tokens::Semicolon>(*after)) {
          ::std::cerr << "Expected semicolon, aborting.\n";
          return parse_result_t{nullptr, finish};
@@ -253,36 +266,31 @@ parse_result_t parse_expression(
       return parse_result_t{nullptr, finish};
    }
    auto [term, remainder] = parse_term(start, finish);
-   if (remainder == finish) {
-      return parse_result_t{::std::move(term), remainder};
-   } else if (!term) {
+   if (!term) {
       ::std::cerr << "Expected term, parse aborted.\n";
       return parse_result_t{nullptr, finish};
    }
-   auto const &op = *remainder;
-   if (::std::holds_alternative<Tokens::Equal>(op)) {
-      return parse_result_t{nullptr, finish};
+   if (remainder != finish) {
+      if (auto const &op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
+         auto const opval = op->value_;
+         if (
+            opval == Tokens::Operator::Plus ||
+            opval == Tokens::Operator::Minus
+         ) {
+            auto opremainder = ::std::next(remainder);
+            auto [rexpr, rremainder] = parse_expression(opremainder, finish);
+            if (rexpr) {
+               return parse_result_t{
+                  ::std::make_unique<BinaryOperation>(
+                     opval, ::std::move(term), ::std::move(rexpr)
+                  ),
+                  rremainder
+               };
+            }
+         }
+      }
    }
-   if (!::std::holds_alternative<Tokens::Operator>(op)) {
-      return parse_result_t{::std::move(term), remainder};
-   }
-   auto const &opval = ::std::get<Tokens::Operator>(op).value_;
-   if (opval != Tokens::Operator::Plus && opval != Tokens::Operator::Minus) {
-      ::std::cerr << "Expected + or -, parse aborted.\n";
-      ::std::cerr << "This is likely a programming error.\n";
-      return parse_result_t{nullptr, finish};
-   }
-   ++remainder;
-   auto [rterm, rremainder] = parse_expression(remainder, finish);
-   if (rterm) {
-      return parse_result_t{
-         ::std::make_unique<BinaryOperation>(opval, ::std::move(term), ::std::move(rterm)),
-         rremainder
-      };
-   } else {
-      ::std::cerr << "Expected expression, parse aborted.\n";
-      return parse_result_t{nullptr, finish};
-   }
+   return parse_result_t{::std::move(term), remainder};
 }
 
 parse_result_t
@@ -292,31 +300,32 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
       return {nullptr, finish};
    }
    auto [factor, remainder] = parse_factor(start, finish);
-   if (remainder == finish) {
-      return parse_result_t{::std::move(factor), remainder};
-   } else if (!factor) {
+   if (!factor) {
       ::std::cerr << "Expected factor, parse aborted.\n";
       return {nullptr, finish};
    }
-   auto const &op = *remainder;
-   if (!::std::holds_alternative<Tokens::Operator>(op)) {
-      return parse_result_t{::std::move(factor), remainder};
+   // Check remainder of production, do we have a / or * followed by
+   // another term?
+   if (remainder != finish) {
+      if (auto const op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
+         if (
+            op->value_ == Tokens::Operator::Multiply ||
+            op->value_ == Tokens::Operator::Divide
+         ) {
+            auto opremainder = ::std::next(remainder);
+            auto [rterm, rremainder] = parse_term(opremainder, finish);
+            if (rterm) {
+               return {
+                  ::std::make_unique<BinaryOperation>(
+                     op->value_, ::std::move(factor), ::std::move(rterm)
+                  ),
+                  rremainder
+               };
+            }
+         }
+      }
    }
-   auto const &opval = ::std::get<Tokens::Operator>(op).value_;
-   if (opval != Tokens::Operator::Multiply && opval != Tokens::Operator::Divide) {
-      return parse_result_t{::std::move(factor), remainder};
-   }
-   ++remainder;
-   auto [rfactor, rremainder] = parse_term(remainder, finish);
-   if (rfactor) {
-      return {
-         ::std::make_unique<BinaryOperation>(opval, ::std::move(factor), ::std::move(rfactor)),
-         rremainder
-      };
-   } else {
-      ::std::cerr << "Expected factor, parse aborted.\n";
-      return {nullptr, finish};
-   }
+   return parse_result_t{::std::move(factor), remainder};
 }
 
 parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
@@ -339,21 +348,18 @@ parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t
       if (op->value_ == Tokens::Paren::Open) {
          ++start;
          auto [expr, remainder] = parse_expression(start, finish);
-         if (remainder == finish) {
-            ::std::cerr << "Expected expression, parse aborted.\n";
-            return {nullptr, finish};
-         }
-         if (auto const opclose = ::std::get_if<Tokens::Paren>(&(*remainder))) {
-            if (opclose->value_ == Tokens::Paren::Close) {
-               return {::std::move(expr), ::std::next(remainder)};
+         if (remainder != finish) {
+            if (
+               auto const opclose = ::std::get_if<Tokens::Paren>(&(*remainder))
+            ) {
+               if (opclose->value_ == Tokens::Paren::Close) {
+                  return {::std::move(expr), ::std::next(remainder)};
+               }
             }
-            ::std::cerr << "Expected closing paren, parse aborted.\n";
-            return {nullptr, finish};
-         } else {
-            ::std::cerr << "Expected closing paren, parse aborted.\n";
-            return {nullptr, finish};
          }
       }
+      ::std::cerr << "Expected closing paren, parse aborted.\n";
+      return {nullptr, finish};
    }
    ::std::cerr << "Expected factor, parse aborted.\n";
    return {nullptr, finish};
