@@ -94,7 +94,7 @@ SCENARIO(
         }
     }
 
-    GIVEN("Right-associative expression: 2 - 3 - 4")
+    GIVEN("Right-associative expression: 8 - 5 - 2")
     {
         std::string input = "8 - 5 - 2;";
         auto tokens = tokenize_input(input.begin(), input.end());
@@ -111,6 +111,27 @@ SCENARIO(
                 REQUIRE(result->evaluate() == 5);
                 REQUIRE(result->to_infix_string() == "(8 - (5 - 2));\n");
                 REQUIRE(result->to_prefix_string() == "(progn\n    (- 8 (- 5 2))\n)");
+            }
+        }
+    }
+
+    GIVEN("Right-associative factors: 8 * 5 / 3")
+    {
+        std::string input = "8 * 5 / 3;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+
+            THEN("Expression with factors is right-associative")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                // Should parse as 8 - (5 - 2) due to right-associative grammar
+                REQUIRE(result->evaluate() == 8);
+                REQUIRE(result->to_infix_string() == "(8 * (5 / 3));\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (* 8 (/ 5 3))\n)");
             }
         }
     }
