@@ -263,35 +263,44 @@ parse_result_t parse_expression(
    Tokens::toklist_t::iterator finish
    )
 {
+   ::std::deque<exprptr_t> terms;
+   ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return parse_result_t{nullptr, finish};
    }
-   auto [term, remainder] = parse_term(start, finish);
-   if (!term) {
-      ::std::cerr << "Expected term, parse aborted.\n";
-      return parse_result_t{nullptr, finish};
-   }
-   if (remainder != finish) {
+   while (true) {
+      auto [term, remainder] = parse_term(start, finish);
+      if (!term) {
+         ::std::cerr << "Expected term, parse aborted.\n";
+         return parse_result_t{nullptr, finish};
+      }
+      terms.emplace_back(::std::move(term));
+      start = remainder;
       if (auto const &op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
          auto const opval = op->value_;
          if (
             opval == Tokens::Operator::Plus ||
             opval == Tokens::Operator::Minus
          ) {
-            auto opremainder = ::std::next(remainder);
-            auto [rexpr, rremainder] = parse_expression(opremainder, finish);
-            if (rexpr) {
-               return parse_result_t{
-                  ::std::make_unique<BinaryOperation>(
-                     opval, ::std::move(term), ::std::move(rexpr)
-                  ),
-                  rremainder
-               };
-            }
+            operators.emplace_back(*op);
+            start = ::std::next(remainder);
+         } else {
+            break;
          }
+      } else {
+         break;
       }
    }
-   return parse_result_t{::std::move(term), remainder};
+   assert(operators.size() + 1 == terms.size());
+   exprptr_t top = ::std::move(terms.front());
+   terms.pop_front();
+   while (!operators.empty()) {
+      auto const op = operators.front();
+      operators.pop_front();
+      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(terms.front()));
+      terms.pop_front();
+   }
+   return parse_result_t{::std::move(top), start};
 }
 
 parse_result_t

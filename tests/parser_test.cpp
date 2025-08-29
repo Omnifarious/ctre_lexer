@@ -94,7 +94,7 @@ SCENARIO(
         }
     }
 
-    GIVEN("Right-associative expression: 8 - 5 - 2")
+    GIVEN("Left-associative expression: 8 - 5 - 2")
     {
         std::string input = "8 - 5 - 2;";
         auto tokens = tokenize_input(input.begin(), input.end());
@@ -103,14 +103,14 @@ SCENARIO(
         {
             auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
             
-            THEN("Expression is right-associative")
+            THEN("Expression is left-associative")
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                // Should parse as 8 - (5 - 2) due to right-associative grammar
-                REQUIRE(result->evaluate() == 5);
-                REQUIRE(result->to_infix_string() == "(8 - (5 - 2));\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (- 8 (- 5 2))\n)");
+                // Should parse as (8 - 5) - 2 due to left-associative grammar
+                REQUIRE(result->evaluate() == 1);
+                REQUIRE(result->to_infix_string() == "((8 - 5) - 2);\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (- (- 8 5) 2)\n)");
             }
         }
     }
@@ -190,8 +190,8 @@ SCENARIO(
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 REQUIRE(result->evaluate() == 551);
-                REQUIRE(result->to_infix_string() == "(16 + (493 + 42));\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (+ 16 (+ 493 42))\n)");
+                REQUIRE(result->to_infix_string() == "((16 + 493) + 42);\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (+ (+ 16 493) 42)\n)");
             }
         }
     }
