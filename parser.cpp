@@ -2,6 +2,7 @@
 // See project LICENSE file for details
 
 #include <unordered_map>
+#include <deque>
 #include "parser.hpp"
 #include "tokens.hpp"
 
@@ -296,36 +297,49 @@ parse_result_t parse_expression(
 parse_result_t
 parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
 {
+   ::std::deque<exprptr_t> factors;
+   ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return {nullptr, finish};
    }
-   auto [factor, remainder] = parse_factor(start, finish);
-   if (!factor) {
-      ::std::cerr << "Expected factor, parse aborted.\n";
-      return {nullptr, finish};
-   }
-   // Check remainder of production, do we have a / or * followed by
-   // another term?
-   if (remainder != finish) {
+   while (true) {
+      auto [factor, remainder] = parse_factor(start, finish);
+      if (!factor) {
+         ::std::cerr << "Expected factor!\n";
+         return {nullptr, finish};
+      }
+      factors.emplace_back(::std::move(factor));
+      start = remainder;
+
+      // Check remainder of production, do we have a / or * followed by
+      // another term?
+      if (start == finish) {
+         break;
+      }
       if (auto const op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
          if (
             op->value_ == Tokens::Operator::Multiply ||
             op->value_ == Tokens::Operator::Divide
          ) {
-            auto opremainder = ::std::next(remainder);
-            auto [rterm, rremainder] = parse_term(opremainder, finish);
-            if (rterm) {
-               return {
-                  ::std::make_unique<BinaryOperation>(
-                     op->value_, ::std::move(factor), ::std::move(rterm)
-                  ),
-                  rremainder
-               };
-            }
+            operators.emplace_back(*op);
+            start = ::std::next(remainder);
+         } else {
+            break;
          }
+      } else {
+         break;
       }
    }
-   return parse_result_t{::std::move(factor), remainder};
+   assert(operators.size() + 1 == factors.size());
+   exprptr_t top = ::std::move(factors.front());
+   factors.pop_front();
+   while (!operators.empty()) {
+      auto const op = operators.front();
+      operators.pop_front();
+      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(factors.front()));
+      factors.pop_front();
+   }
+   return {::std::move(top), start};
 }
 
 parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)

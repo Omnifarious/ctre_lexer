@@ -17,8 +17,8 @@ namespace Parser {
 //
 // sequence = statement ; [ sequence ]
 // statement = expression | identifer = expression
-// expression <- term | term ( + | - ) expression
-// term <- factor | factor ( * | / ) term
+// expression <- expression | expression ( + | - ) term
+// term <- term | term ( * | / ) factor
 // factor <- identifer | numeric_literal | "(" expression ")"
 
 
