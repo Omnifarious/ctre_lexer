@@ -60,7 +60,7 @@ using AnyToken = ::std::variant<
    UnsignedInteger, Identifier, Operator, Paren, Semicolon, Equal
 >;
 
-using toklist_t = ::std::vector<Tokens::AnyToken>;
+using toklist_t = ::std::vector<AnyToken>;
 
 class tokenize_error : public ::std::runtime_error {
 public:
@@ -68,38 +68,38 @@ public:
 };
 
 template <::std::input_iterator I>
-Tokens::toklist_t tokenize_input(I begin, I end)
+toklist_t tokenize_input(I begin, I end)
 {
    using ::std::stoull;
    using ::std::get;
-   ::std::vector<Tokens::AnyToken> tokens;
+   ::std::vector<AnyToken> tokens;
    input_to_forward_range_adapter adapter{begin, end};
    for (auto const &match: tokenizer_re(adapter.begin(), adapter.end())) {
       if (match) {
          if (auto const &dec = match.template get<"int_dec">()) {
             auto const num = dec.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 10)});
+            tokens.emplace_back(UnsignedInteger{num, stoull(num, nullptr, 10)});
          } else if (auto const &hex = match.template get<"int_hex">()) {
             auto const num = hex.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 16)});
+            tokens.emplace_back(UnsignedInteger{num, stoull(num, nullptr, 16)});
          } else if (auto const &oct = match.template get<"int_oct">()) {
             auto const num = oct.to_string();
-            tokens.emplace_back(Tokens::UnsignedInteger{num, stoull(num, nullptr, 8)});
+            tokens.emplace_back(UnsignedInteger{num, stoull(num, nullptr, 8)});
          } else if (auto const &id = match.template get<"identifier">()) {
-            tokens.emplace_back(Tokens::Identifier{id.to_string(), id.to_string()});
+            tokens.emplace_back(Identifier{id.to_string(), id.to_string()});
          } else if (auto const &op = match.template get<"operator">()) {
             switch (op.to_string()[0]) {
                case '+':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Plus});
+                  tokens.emplace_back(Operator{op.to_string(), Operator::Plus});
                   break;
                case '-':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Minus});
+                  tokens.emplace_back(Operator{op.to_string(), Operator::Minus});
                   break;
                case '*':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Multiply});
+                  tokens.emplace_back(Operator{op.to_string(), Operator::Multiply});
                   break;
                case '/':
-                  tokens.emplace_back(Tokens::Operator{op.to_string(), Tokens::Operator::Divide});
+                  tokens.emplace_back(Operator{op.to_string(), Operator::Divide});
                   break;
                default:
                   assert(!"Unexpected operator");
@@ -108,19 +108,19 @@ Tokens::toklist_t tokenize_input(I begin, I end)
          } else if (auto const &paren = match.template get<"paren">()) {
             switch (paren.to_string()[0]) {
                case '(':
-                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Open});
+                  tokens.emplace_back(Paren{paren.to_string(), Paren::Open});
                   break;
                case ')':
-                  tokens.emplace_back(Tokens::Paren{paren.to_string(), Tokens::Paren::Close});
+                  tokens.emplace_back(Paren{paren.to_string(), Paren::Close});
                   break;
                default:
                   assert(!"Unexpected parenthesis");
                   break;
             }
          } else if (auto const &semicolon = match.template get<"semicolon">()) {
-            tokens.emplace_back(Tokens::Semicolon{semicolon.to_string()});
+            tokens.emplace_back(Semicolon{semicolon.to_string()});
          } else if (auto const &equal = match.template get<"equal">()) {
-            tokens.emplace_back(Tokens::Equal{equal.to_string()});
+            tokens.emplace_back(Equal{equal.to_string()});
          } else {
             throw tokenize_error("Unexpected token: " + match.to_string());
          }
