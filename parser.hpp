@@ -17,8 +17,9 @@ namespace Parser {
 //
 // sequence = statement ; [ sequence ]
 // statement = expression | identifer = expression
-// expression <- expression | expression ( + | - ) term
-// term <- term | term ( * | / ) factor
+// expression <- expression | expression ( && | || ) boolterm
+// boolterm = term | boolterm ( + | - ) term
+// term <- factor | term ( * | / ) factor
 // factor <- identifer | numeric_literal | "(" expression ")"
 
 
@@ -38,6 +39,8 @@ parse_result_t
 parse_statement_list(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t

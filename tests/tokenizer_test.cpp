@@ -148,6 +148,51 @@ SCENARIO("Fixed string generates expected list of tokens.")
         }
     }
 
+    GIVEN("A string with a boolean operators")
+    {
+        std::string input = "x = true && false || true;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The correct tokens are generated")
+            {
+                REQUIRE(tokens.size() == 8);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[1]));
+
+                // Check identifer "true"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "true");
+
+                // Check boolean operator BoolAnd
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::BoolAnd);
+
+                // Check identifer "false"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "false");
+
+                // Check boolean operator BoolOr
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::BoolOr);
+
+                // Check identifer "true"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "true");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+            }
+        }
+    }
+
     GIVEN("An empty string")
     {
         std::string input = "";

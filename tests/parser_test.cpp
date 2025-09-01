@@ -196,6 +196,37 @@ SCENARIO(
         }
     }
 
+    GIVEN("Expression with boolean operators.")
+    {
+        std::string input = "five = 5; one = 1; six = 6;"
+                            "five - one * five && one;"
+                            "five * six - six && one;"
+                            "0 && 1;"
+                            "1 && 0;"
+                            "0 && 0;"
+                            "0 || 1 && 5;"
+                            "1 && 5 || 0;"
+                            "0 || 6 && 0;"
+                            "0 && 5 || 1 && 0;"
+                            "5 || 0 && 0;"
+                            "1 || 6;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+
+            THEN("Boolean operators are handled correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                REQUIRE(result->evaluate() == 1);
+                REQUIRE(result->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
+            }
+        }
+    }
+
     GIVEN("Empty input")
     {
         std::string input = "";

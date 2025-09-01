@@ -20,7 +20,7 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
-   "(?<operator>[+*/]|-)|"
+   "(?<operator>[+*/]|-|&&|\\|\\|)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
    "(?<equal>=)|"
@@ -45,7 +45,7 @@ struct Identifier : Base {
 };
 
 struct Operator : Base {
-   enum { Plus, Minus, Multiply, Divide } value_;
+   enum { Plus, Minus, Multiply, Divide, BoolAnd, BoolOr } value_;
 };
 
 struct Paren : Base {
@@ -101,6 +101,18 @@ toklist_t tokenize_input(I begin, I end)
                case '/':
                   tokens.emplace_back(Operator{op.to_string(), Operator::Divide});
                   break;
+               case '&':
+                  if (op.to_string() == "&&") {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::BoolAnd});
+                     break;
+                  }
+                  [[fallthrough]];
+               case '|':
+                  if (op.to_string() == "||") {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::BoolOr});
+                     break;
+                  }
+                  [[fallthrough]];
                default:
                   assert(!"Unexpected operator");
                   break;

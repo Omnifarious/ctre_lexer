@@ -27,7 +27,7 @@ private:
    exprptr_t right_;
 
    using sv = ::std::string_view;
-   static sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv};
+   static sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
 };
 
 ::std::uintmax_t BinaryOperation::evaluate() const
@@ -48,6 +48,12 @@ private:
          break;
       case Operator::Divide:
          return lval / rval;
+         break;
+      case Operator::BoolAnd:
+         return lval && rval ? 1U : 0U;
+         break;
+      case Operator::BoolOr:
+         return lval || rval ? 1U : 0U;
          break;
       default:
          assert(!"Unexpected operator");
@@ -263,6 +269,47 @@ parse_result_t parse_expression(
    Tokens::toklist_t::iterator finish
    )
 {
+   ::std::deque<exprptr_t> boolterms;
+   ::std::deque<Tokens::Operator> operators;
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   while (boolterms.size() == operators.size()) {
+      auto [boolterm, remainder] = parse_boolterm(start, finish);
+      if (!boolterm) {
+         ::std::cerr << "Expected boolterm, parse aborted.\n";
+         return parse_result_t{nullptr, finish};
+      }
+      boolterms.emplace_back(::std::move(boolterm));
+      start = remainder;
+      if (auto const &op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
+         auto const opval = op->value_;
+         if (
+            opval == Tokens::Operator::BoolAnd ||
+            opval == Tokens::Operator::BoolOr
+         ) {
+            operators.emplace_back(*op);
+            start = ::std::next(remainder);
+         }
+      }
+   }
+   assert(operators.size() + 1 == boolterms.size());
+   exprptr_t top = ::std::move(boolterms.front());
+   boolterms.pop_front();
+   while (!operators.empty()) {
+      auto const op = operators.front();
+      operators.pop_front();
+      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(boolterms.front()));
+      boolterms.pop_front();
+   }
+   return parse_result_t{::std::move(top), start};
+}
+
+parse_result_t parse_boolterm(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+   )
+{
    ::std::deque<exprptr_t> terms;
    ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
@@ -271,7 +318,6 @@ parse_result_t parse_expression(
    while (true) {
       auto [term, remainder] = parse_term(start, finish);
       if (!term) {
-         ::std::cerr << "Expected term, parse aborted.\n";
          return parse_result_t{nullptr, finish};
       }
       terms.emplace_back(::std::move(term));
@@ -370,7 +416,7 @@ parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t
    } else if (auto const op = ::std::get_if<Tokens::Paren>(&tok)) {
       if (op->value_ == Tokens::Paren::Open) {
          ++start;
-         auto [expr, remainder] = parse_expression(start, finish);
+         auto [expr, remainder] = parse_boolterm(start, finish);
          if (remainder != finish) {
             if (
                auto const opclose = ::std::get_if<Tokens::Paren>(&(*remainder))
