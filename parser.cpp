@@ -13,7 +13,7 @@ namespace Parser {
 class BinaryOperation : public ParseNode {
 public:
    using OpType = decltype(::std::declval<Tokens::Operator>().value_);
-   BinaryOperation(OpType op, exprptr_t left, exprptr_t right) :
+   BinaryOperation(OpType op, astptr_t left, astptr_t right) :
        op_(op), left_(::std::move(left)), right_(::std::move(right))
    {}
 
@@ -23,8 +23,8 @@ public:
 
 private:
    OpType op_;
-   exprptr_t left_;
-   exprptr_t right_;
+   astptr_t left_;
+   astptr_t right_;
 
    using sv = ::std::string_view;
    static sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
@@ -137,7 +137,7 @@ private:
       Tokens::toklist_t::iterator finish
    );
 
-   ::std::vector<exprptr_t> statements_;
+   ::std::vector<astptr_t> statements_;
 };
 
 ::std::uintmax_t StatementList::evaluate() const
@@ -176,7 +176,7 @@ private:
 class AssignmentStatement : public ParseNode {
 public:
    AssignmentStatement(
-      Tokens::Identifier const &id, exprptr_t expression
+      Tokens::Identifier const &id, astptr_t expression
    )
          : id_(id.value_), expression_(::std::move(expression))
    {}
@@ -187,7 +187,7 @@ public:
 
 private:
    ::std::string id_;
-   exprptr_t expression_;
+   astptr_t expression_;
 };
 
 ::std::uintmax_t AssignmentStatement::evaluate() const
@@ -215,7 +215,7 @@ parse_result_t parse_statement_list(
    auto statements = ::std::make_unique<StatementList>();
 
    while (start != finish) {
-      exprptr_t statement;
+      astptr_t statement;
       Tokens::toklist_t::iterator after;
       // Drops through without setting statement if we find an identifier,
       // but not an equals sign.
@@ -269,7 +269,7 @@ parse_result_t parse_expression(
    Tokens::toklist_t::iterator finish
    )
 {
-   ::std::deque<exprptr_t> boolterms;
+   ::std::deque<astptr_t> boolterms;
    ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return parse_result_t{nullptr, finish};
@@ -294,7 +294,7 @@ parse_result_t parse_expression(
       }
    }
    assert(operators.size() + 1 == boolterms.size());
-   exprptr_t top = ::std::move(boolterms.front());
+   astptr_t top = ::std::move(boolterms.front());
    boolterms.pop_front();
    while (!operators.empty()) {
       auto const op = operators.front();
@@ -310,7 +310,7 @@ parse_result_t parse_boolterm(
    Tokens::toklist_t::iterator finish
    )
 {
-   ::std::deque<exprptr_t> terms;
+   ::std::deque<astptr_t> terms;
    ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return parse_result_t{nullptr, finish};
@@ -338,7 +338,7 @@ parse_result_t parse_boolterm(
       }
    }
    assert(operators.size() + 1 == terms.size());
-   exprptr_t top = ::std::move(terms.front());
+   astptr_t top = ::std::move(terms.front());
    terms.pop_front();
    while (!operators.empty()) {
       auto const op = operators.front();
@@ -352,7 +352,7 @@ parse_result_t parse_boolterm(
 parse_result_t
 parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
 {
-   ::std::deque<exprptr_t> factors;
+   ::std::deque<astptr_t> factors;
    ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return {nullptr, finish};
@@ -386,7 +386,7 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
       }
    }
    assert(operators.size() + 1 == factors.size());
-   exprptr_t top = ::std::move(factors.front());
+   astptr_t top = ::std::move(factors.front());
    factors.pop_front();
    while (!operators.empty()) {
       auto const op = operators.front();

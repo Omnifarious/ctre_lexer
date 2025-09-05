@@ -32,8 +32,8 @@ public:
    virtual ::std::string to_prefix_string() const = 0;
 };
 
-using exprptr_t = ::std::unique_ptr<ParseNode>;
-using parse_result_t = ::std::pair<exprptr_t, Tokens::toklist_t::iterator>;
+using astptr_t = ::std::unique_ptr<ParseNode>;
+using parse_result_t = ::std::pair<astptr_t, Tokens::toklist_t::iterator>;
 
 parse_result_t
 parse_statement_list(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
