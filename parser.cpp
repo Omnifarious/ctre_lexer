@@ -3,62 +3,172 @@
 
 #include <unordered_map>
 #include <deque>
+#include <sstream>
 #include "parser.hpp"
 #include "tokens.hpp"
 
-static ::std::unordered_map<::std::string, ::std::uint64_t> identifiers_S;
 using namespace ::std::string_view_literals;
 
+namespace {
+using sv = ::std::string_view;
+sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
+}
+
 namespace Parser {
-class BinaryOperation : public ParseNode {
-public:
-   using OpType = decltype(::std::declval<Tokens::Operator>().value_);
-   BinaryOperation(OpType op, astptr_t left, astptr_t right) :
-       op_(op), left_(::std::move(left)), right_(::std::move(right))
-   {}
+struct SimpleEvaluator {
+   ::std::unordered_map<::std::string, ::std::uint64_t> identifiers_;
+   ::std::uintmax_t current_result_ = 0;
 
-   ::std::uintmax_t evaluate() const override;
-   ::std::string to_infix_string() const override;
-   ::std::string to_prefix_string() const override;
+   void operator()(BinaryOperation const &op)
+   {
+      ::std::visit(*this, *op.left_);
+      auto lval = current_result_;
+      ::std::visit(*this, *op.right_);
+      auto rval = current_result_;
+      using namespace Tokens;
 
-private:
-   OpType op_;
-   astptr_t left_;
-   astptr_t right_;
-
-   using sv = ::std::string_view;
-   static sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
+      switch (op.op_) {
+         case Operator::Plus:
+            current_result_ = lval + rval;
+            break;
+         case Operator::Minus:
+            current_result_ = lval - rval;
+            break;
+         case Operator::Multiply:
+            current_result_ = lval * rval;
+            break;
+         case Operator::Divide:
+            current_result_ = lval / rval;
+            break;
+         case Operator::BoolAnd:
+            current_result_ = lval && rval ? 1U : 0U;
+            break;
+         case Operator::BoolOr:
+            current_result_ = lval || rval ? 1U : 0U;
+            break;
+         default:
+            assert(!"Unexpected operator");
+            current_result_ = 0U;
+      }
+   }
+   void operator()(Identifier const &id)
+   {
+      auto const it = identifiers_.find(id.name_);
+      if (it == identifiers_.end()) {
+         current_result_ = 0;
+      } else {
+         current_result_ = it->second;
+      }
+   }
+   void operator()(NumericLiteral const &nl)
+   {
+      current_result_ = nl.value_;
+   }
+   void operator()(StatementList const &sl)
+   {
+      int i = 0;
+      for (auto const &statement: sl.statements_) {
+         ::std::visit(*this, *statement);
+         ::std::cout << ::std::format("Statement {}: {}\n", i++, current_result_);
+      }
+   }
+   void operator()(AssignmentStatement const &as)
+   {
+      ::std::visit(*this, *as.expression_);
+      identifiers_[as.id_] = current_result_;
+      current_result_ = 0;
+   }
 };
 
-::std::uintmax_t BinaryOperation::evaluate() const
-{
-   auto const lval = left_->evaluate();
-   auto const rval = right_->evaluate();
-   using namespace Tokens;
+struct InfixStringizer {
+   ::std::ostringstream result_;
 
-   switch (op_) {
-      case Operator::Plus:
-         return lval + rval;
-         break;
-      case Operator::Minus:
-         return lval - rval;
-         break;
-      case Operator::Multiply:
-         return lval * rval;
-         break;
-      case Operator::Divide:
-         return lval / rval;
-         break;
-      case Operator::BoolAnd:
-         return lval && rval ? 1U : 0U;
-         break;
-      case Operator::BoolOr:
-         return lval || rval ? 1U : 0U;
-         break;
-      default:
-         assert(!"Unexpected operator");
+   void operator()(BinaryOperation const &op)
+   {
+      result_ << '(';
+      ::std::visit(*this, *op.left_);
+      result_ << ' ' << S_op_names[op.op_] << ' ';
+      ::std::visit(*this, *op.right_);
+      result_ << ')';
    }
-   return 0;
+   void operator()(Identifier const &id)
+   {
+      result_ << id.name_;
+   }
+   void operator()(NumericLiteral const &nl)
+   {
+      result_ << nl.value_;
+   }
+   void operator()(StatementList const &sl)
+   {
+      for (auto const &statement: sl.statements_) {
+         ::std::visit(*this, *statement);
+         result_ << ";\n";
+      }
+   }
+   void operator()(AssignmentStatement const &as)
+   {
+      result_ << as.id_ << " = ";
+      ::std::visit(*this, *as.expression_);
+   }
+};
+
+struct PrefixStringizer {
+   ::std::ostringstream result_;
+   void operator()(BinaryOperation const &op)
+   {
+      result_ << '(';
+      result_ << S_op_names[op.op_] << ' ';
+      ::std::visit(*this, *op.left_);
+      result_ << ' ';
+      ::std::visit(*this, *op.right_);
+      result_ << ')';
+   }
+   void operator()(Identifier const &id)
+   {
+      result_ << id.name_;
+   }
+   void operator()(NumericLiteral const &nl)
+   {
+      result_ << nl.value_;
+   }
+   void operator()(StatementList const &sl)
+   {
+      result_ << "(progn\n";
+      for (auto const &statement: sl.statements_) {
+         result_ << "    ";
+         ::std::visit(*this, *statement);
+         result_ << "\n";
+      }
+      result_ << ")";
+   }
+   void operator()(AssignmentStatement const &as)
+   {
+      result_ << "(setq " << as.id_ << " ";
+      ::std::visit(*this, *as.expression_);
+      result_ << ")";
+   }
+};
+
+::std::uintmax_t ASTNode::evaluate() const
+{
+   SimpleEvaluator eval;
+   ::std::visit(eval, *this);
+   return eval.current_result_;
+}
+
+::std::string ASTNode::to_infix_string() const
+{
+   InfixStringizer is;
+   ::std::visit(is, *this);
+   return is.result_.str();
+}
+
+::std::string ASTNode::to_prefix_string() const
+{
+   PrefixStringizer ps;
+   ::std::visit(ps, *this);
+   return ps.result_.str();
 }
 
 // The problem that needs to be solved here...  how to deal with precedence
@@ -72,196 +182,65 @@ private:
 //
 //  ((1 + 2) * (3 * 4))
 
-::std::string BinaryOperation::to_infix_string() const
-{
-   return ::std::format("({} {} {})", left_->to_infix_string(), S_op_names[op_], right_->to_infix_string());
-}
-
-::std::string BinaryOperation::to_prefix_string() const
-{
-   return ::std::format("({} {} {})", S_op_names[op_], left_->to_prefix_string(), right_->to_prefix_string());
-}
-
-class IdentifierExpression : public ParseNode {
-public:
-   explicit IdentifierExpression(Tokens::Identifier const &idtok) :
-       name_(idtok.value_)
-   {}
-
-   ::std::uintmax_t evaluate() const override;
-   ::std::string to_infix_string() const override { return name_; }
-   ::std::string to_prefix_string() const override { return name_; }
-
-private:
-   ::std::string name_;
-};
-
-::std::uintmax_t IdentifierExpression::evaluate() const
-{
-   auto const it = identifiers_S.find(name_);
-   if (it == identifiers_S.end()) {
-      return 0;
-   }
-   return it->second;
-}
-
-class NumericLiteral : public ParseNode {
-public:
-   explicit NumericLiteral(::std::uintmax_t value) : value_(value)
-   { }
-
-   ::std::uintmax_t evaluate() const override { return value_; }
-   ::std::string to_infix_string() const override { return ::std::to_string(value_); }
-   ::std::string to_prefix_string() const override { return ::std::to_string(value_); }
-
-private:
-   ::std::uintmax_t const value_;
-};
-
-parse_result_t parse_statement_list(
-   Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
-   );
-
-class StatementList : public ParseNode {
-public:
-   StatementList() = default;
-
-   ::std::uintmax_t evaluate() const override;
-   ::std::string to_infix_string() const override;
-   ::std::string to_prefix_string() const override;
-
-private:
-   friend parse_result_t parse_statement_list(
-      Tokens::toklist_t::iterator start,
-      Tokens::toklist_t::iterator finish
-   );
-
-   ::std::vector<astptr_t> statements_;
-};
-
-::std::uintmax_t StatementList::evaluate() const
-{
-   int i = 0;
-   decltype(statements_[0]->evaluate()) result = 0U;
-   for (auto const &statement: statements_) {
-      result = statement->evaluate();
-      ::std::cout << ::std::format("Statement {}: {}\n", i++, result);
-   }
-   return result;
-}
-
-::std::string StatementList::to_infix_string() const
-{
-   ::std::string result;
-   for (auto const &statement: statements_) {
-      result += statement->to_infix_string();
-      result += ";\n";
-   }
-   return result;
-}
-
-::std::string StatementList::to_prefix_string() const
-{
-   ::std::string result = "(progn\n";
-   for (auto const &statement: statements_) {
-      result += "    ";
-      result += statement->to_prefix_string();
-      result += "\n";
-   }
-   result += ")";
-   return result;
-}
-
-class AssignmentStatement : public ParseNode {
-public:
-   AssignmentStatement(
-      Tokens::Identifier const &id, astptr_t expression
-   )
-         : id_(id.value_), expression_(::std::move(expression))
-   {}
-
-   ::std::uintmax_t evaluate() const override;
-   ::std::string to_infix_string() const override;
-   ::std::string to_prefix_string() const override;
-
-private:
-   ::std::string id_;
-   astptr_t expression_;
-};
-
-::std::uintmax_t AssignmentStatement::evaluate() const
-{
-   auto const value = expression_->evaluate();
-   identifiers_S[id_] = value;
-   return 0;
-}
-
-::std::string AssignmentStatement::to_infix_string() const
-{
-   return ::std::format("{} = {}", id_, expression_->to_infix_string());
-}
-
-::std::string AssignmentStatement::to_prefix_string() const
-{
-   return ::std::format("(setq {} {})", id_, expression_->to_prefix_string());
-}
 
 parse_result_t parse_statement_list(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish
    )
 {
-   auto statements = ::std::make_unique<StatementList>();
+   auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
+   {
+      auto &statements = ::std::get<StatementList>(*statements_node);
 
-   while (start != finish) {
-      astptr_t statement;
-      Tokens::toklist_t::iterator after;
-      // Drops through without setting statement if we find an identifier,
-      // but not an equals sign.
-      if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
-         auto const &idtok = *id;
-         auto const after_id = ::std::next(start);
-         if (after_id != finish) {
-            if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
-               auto const after_eq = ::std::next(after_id);
-               if (after_eq != finish) {
-                  auto [expr, remainder] = parse_expression(after_eq, finish);
-                  if (!expr) {
-                     ::std::cerr << "Didn't find expression after = in "
-                                    "assignment, aborting!\n";
-                     return parse_result_t{nullptr, finish};
+      while (start != finish) {
+         astptr_t statement;
+         Tokens::toklist_t::iterator after;
+         // Drops through without setting statement if we find an identifier,
+         // but not an equals sign.
+         if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
+            auto const &idtok = *id;
+            auto const after_id = ::std::next(start);
+            if (after_id != finish) {
+               if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
+                  auto const after_eq = ::std::next(after_id);
+                  if (after_eq != finish) {
+                     auto [expr, remainder] = parse_expression(after_eq, finish);
+                     if (!expr) {
+                        ::std::cerr << "Didn't find expression after = in "
+                                       "assignment, aborting!\n";
+                        return parse_result_t{nullptr, finish};
+                     }
+                     statement = ::std::make_unique<ASTNode>(
+                        AssignmentStatement{idtok, ::std::move(expr)}
+                     );
+                     after = remainder;
                   }
-                  statement = ::std::make_unique<AssignmentStatement>(
-                     idtok, ::std::move(expr)
-                  );
-                  after = remainder;
                }
             }
          }
-      }
-      // If it wasn't identifer = expresion, was it just expression?
-      if (!statement) {
-         if (auto [expr, remainder] = parse_expression(start, finish); expr) {
-            statement = ::std::move(expr);
-            after = remainder;
+         // If it wasn't identifer = expresion, was it just expression?
+         if (!statement) {
+            if (auto [expr, remainder] = parse_expression(start, finish); expr) {
+               statement = ::std::move(expr);
+               after = remainder;
+            }
          }
+         // It wasn't _any_ of the valid alternatives.
+         if (!statement) {
+            ::std::cerr << "Didn't find expression or assignment statement, "
+                           "aborting.";
+            return parse_result_t{nullptr, finish};
+         }
+         // We must have a ; between statements.
+         if (!::std::holds_alternative<Tokens::Semicolon>(*after)) {
+            ::std::cerr << "Expected semicolon, aborting.\n";
+            return parse_result_t{nullptr, finish};
+         }
+         start = ++after;
+         statements.statements_.emplace_back(::std::move(statement));
       }
-      // It wasn't _any_ of the valid alternatives.
-      if (!statement) {
-         ::std::cerr << "Didn't find expression or assignment statement, "
-                        "aborting.";
-         return parse_result_t{nullptr, finish};
-      }
-      // We must have a ; between statements.
-      if (!::std::holds_alternative<Tokens::Semicolon>(*after)) {
-         ::std::cerr << "Expected semicolon, aborting.\n";
-         return parse_result_t{nullptr, finish};
-      }
-      start = ++after;
-      statements->statements_.emplace_back(::std::move(statement));
    }
-   return parse_result_t{::std::move(statements), finish};
+   return parse_result_t{::std::move(statements_node), finish};
 }
 
 parse_result_t parse_expression(
@@ -299,7 +278,9 @@ parse_result_t parse_expression(
    while (!operators.empty()) {
       auto const op = operators.front();
       operators.pop_front();
-      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(boolterms.front()));
+      top = ::std::make_unique<ASTNode>(BinaryOperation{
+            op.value_, ::std::move(top), ::std::move(boolterms.front())
+      });
       boolterms.pop_front();
    }
    return parse_result_t{::std::move(top), start};
@@ -343,7 +324,9 @@ parse_result_t parse_boolterm(
    while (!operators.empty()) {
       auto const op = operators.front();
       operators.pop_front();
-      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(terms.front()));
+      top = ::std::make_unique<ASTNode>(BinaryOperation{
+         op.value_, ::std::move(top), ::std::move(terms.front())
+      });
       terms.pop_front();
    }
    return parse_result_t{::std::move(top), start};
@@ -391,7 +374,9 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
    while (!operators.empty()) {
       auto const op = operators.front();
       operators.pop_front();
-      top = ::std::make_unique<BinaryOperation>(op.value_, ::std::move(top), ::std::move(factors.front()));
+      top = ::std::make_unique<ASTNode>(BinaryOperation{
+         op.value_, ::std::move(top), ::std::move(factors.front())
+      });
       factors.pop_front();
    }
    return {::std::move(top), start};
@@ -405,12 +390,12 @@ parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t
    auto const &tok = *start;
    if (auto const id = ::std::get_if<Tokens::Identifier>(&tok)) {
       return {
-         ::std::make_unique<IdentifierExpression>(*id),
+         ::std::make_unique<ASTNode>(Identifier{*id}),
          ::std::next(start)
       };
    } else if (auto const num = ::std::get_if<Tokens::UnsignedInteger>(&tok)) {
       return {
-         ::std::make_unique<NumericLiteral>(num->value_),
+         ::std::make_unique<ASTNode>(NumericLiteral{num->value_}),
          ::std::next(start)
       };
    } else if (auto const op = ::std::get_if<Tokens::Paren>(&tok)) {
