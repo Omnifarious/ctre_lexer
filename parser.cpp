@@ -1,7 +1,6 @@
 // Copyright 2025 by Eric Hopper
 // See project LICENSE file for details
 
-#include <unordered_map>
 #include <deque>
 #include <sstream>
 #include "parser.hpp"
@@ -15,70 +14,71 @@ sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
 }
 
 namespace Parser {
-struct SimpleEvaluator {
-   ::std::unordered_map<::std::string, ::std::uint64_t> identifiers_;
-   ::std::uintmax_t current_result_ = 0;
+void SimpleEvaluator::operator()(BinaryOperation const &op)
+{
+   ::std::visit(*this, *op.left_);
+   auto lval = current_result_;
+   ::std::visit(*this, *op.right_);
+   auto rval = current_result_;
+   using namespace Tokens;
 
-   void operator()(BinaryOperation const &op)
-   {
-      ::std::visit(*this, *op.left_);
-      auto lval = current_result_;
-      ::std::visit(*this, *op.right_);
-      auto rval = current_result_;
-      using namespace Tokens;
+   switch (op.op_) {
+      case Operator::Plus:
+         current_result_ = lval + rval;
+         break;
+      case Operator::Minus:
+         current_result_ = lval - rval;
+         break;
+      case Operator::Multiply:
+         current_result_ = lval * rval;
+         break;
+      case Operator::Divide:
+         current_result_ = lval / rval;
+         break;
+      case Operator::BoolAnd:
+         current_result_ = lval && rval ? 1U : 0U;
+         break;
+      case Operator::BoolOr:
+         current_result_ = lval || rval ? 1U : 0U;
+         break;
+      default:
+         assert(!"Unexpected operator");
+         current_result_ = 0U;
+   }
+}
 
-      switch (op.op_) {
-         case Operator::Plus:
-            current_result_ = lval + rval;
-            break;
-         case Operator::Minus:
-            current_result_ = lval - rval;
-            break;
-         case Operator::Multiply:
-            current_result_ = lval * rval;
-            break;
-         case Operator::Divide:
-            current_result_ = lval / rval;
-            break;
-         case Operator::BoolAnd:
-            current_result_ = lval && rval ? 1U : 0U;
-            break;
-         case Operator::BoolOr:
-            current_result_ = lval || rval ? 1U : 0U;
-            break;
-         default:
-            assert(!"Unexpected operator");
-            current_result_ = 0U;
-      }
-   }
-   void operator()(Identifier const &id)
-   {
-      auto const it = identifiers_.find(id.name_);
-      if (it == identifiers_.end()) {
-         current_result_ = 0;
-      } else {
-         current_result_ = it->second;
-      }
-   }
-   void operator()(NumericLiteral const &nl)
-   {
-      current_result_ = nl.value_;
-   }
-   void operator()(StatementList const &sl)
-   {
-      int i = 0;
-      for (auto const &statement: sl.statements_) {
-         ::std::visit(*this, *statement);
-         ::std::cout << ::std::format("Statement {}: {}\n", i++, current_result_);
-      }
-   }
-   void operator()(AssignmentStatement const &as)
-   {
-      ::std::visit(*this, *as.expression_);
-      identifiers_[as.id_] = current_result_;
+void SimpleEvaluator::operator()(Identifier const &id)
+{
+   auto const it = identifiers_.find(id.name_);
+   if (it == identifiers_.end()) {
       current_result_ = 0;
+   } else {
+      current_result_ = it->second;
    }
-};
+}
+
+void SimpleEvaluator::operator()(NumericLiteral const &nl)
+{
+   current_result_ = nl.value_;
+}
+
+void SimpleEvaluator::operator()(StatementList const &sl)
+{
+   int i = 0;
+   for (auto const &statement: sl.statements_) {
+      ::std::visit(*this, *statement);
+      if (statement_function_) {
+         statement_function_(current_result_);
+      }
+   }
+}
+
+void SimpleEvaluator::operator()(AssignmentStatement const &as)
+{
+   ::std::visit(*this, *as.expression_);
+   identifiers_[as.id_] = current_result_;
+   current_result_ = 0;
+}
 
 struct InfixStringizer {
    ::std::ostringstream result_;

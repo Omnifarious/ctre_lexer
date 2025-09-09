@@ -12,6 +12,10 @@ SCENARIO(
 {
     using Tokens::tokenize_input;
     using Parser::parse_statement_list;
+    ::std::vector<::std::uintmax_t> results;
+    auto save_result = [&results](::std::uintmax_t result) {
+        results.push_back(result);
+    };
 
     GIVEN("A simple numeric literal")
     {
@@ -140,18 +144,22 @@ SCENARIO(
     {
         std::string input = "x = 10; y = 20; x + y;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [ast_top, remainder] = parse_statement_list(tokens.begin(), tokens.end());
             
             THEN("All statements are parsed into a statement list")
             {
-                REQUIRE(result != nullptr);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE(ast_top != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 30);
-                REQUIRE(result->to_infix_string() == "x = 10;\ny = 20;\n(x + y);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *ast_top);
+                REQUIRE(eval.current_result_ == 30);
+                REQUIRE_THAT(results, RangeEquals({0U, 0U, 30U}));
+                REQUIRE(ast_top->to_infix_string() == "x = 10;\ny = 20;\n(x + y);\n");
+                REQUIRE(ast_top->to_prefix_string() == "(progn\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
             }
         }
     }
@@ -214,15 +222,34 @@ SCENARIO(
 
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [ast_top, remainder] = parse_statement_list(tokens.begin(), tokens.end());
 
             THEN("Boolean operators are handled correctly")
             {
-                REQUIRE(result != nullptr);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE(ast_top != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 1);
-                REQUIRE(result->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *ast_top);
+                REQUIRE(eval.current_result_ == 1);
+                REQUIRE_THAT(results, RangeEquals({
+                    0U, // five = 5
+                    0U, // one = 1
+                    0U, // six = 6
+                    0U, // five - one * five && one
+                    1U, // five * six - six && one
+                    0U, // 0 && 1
+                    0U, // 1 && 0
+                    0U, // 0 && 0
+                    1U, // 0 || 1 && 5
+                    1U, // 1 && 5 || 0
+                    0U, // 0 || 6 && 0
+                    0U, // 0 && 5 || 1 && 0
+                    0U, // 5 || 0 && 0
+                    1U  // 1 || 6
+                }));
+                REQUIRE(ast_top->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
+                REQUIRE(ast_top->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
             }
         }
     }

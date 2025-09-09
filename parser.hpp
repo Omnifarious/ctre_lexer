@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <functional>
+#include <unordered_map>
 #include "tokens.hpp"
 
 namespace Parser {
@@ -108,6 +110,24 @@ inline AssignmentStatement::AssignmentStatement(Tokens::Identifier const &id, as
    : id_(id.value_), expression_(::std::move(expression))
 {
 }
+
+class SimpleEvaluator {
+ public:
+   SimpleEvaluator() = default;
+   explicit SimpleEvaluator(::std::function<void(uintmax_t statement_result)> f)
+      : statement_function_(::std::move(f))
+   {}
+   void operator()(BinaryOperation const &op);
+   void operator()(Identifier const &id);
+   void operator()(NumericLiteral const &lit);
+   void operator()(StatementList const &list);
+   void operator()(AssignmentStatement const &as);
+   void operator()(ASTNode const &node);
+
+   ::std::uintmax_t current_result_ = 0;
+   ::std::function<void(uintmax_t statement_result)> statement_function_;
+   ::std::unordered_map<std::string, ::std::uintmax_t> identifiers_;
+};
 
 } // namespace Parser
 
