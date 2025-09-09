@@ -195,32 +195,14 @@ parse_result_t parse_sequence(
       while (start != finish) {
          astptr_t statement;
          Tokens::toklist_t::iterator after;
-         // Drops through without setting statement if we find an identifier,
-         // but not an equals sign.
-         if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
-            auto const &idtok = *id;
-            auto const after_id = ::std::next(start);
-            if (after_id != finish) {
-               if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
-                  auto const after_eq = ::std::next(after_id);
-                  if (after_eq != finish) {
-                     auto [expr, remainder] = parse_expression(after_eq, finish);
-                     if (!expr) {
-                        ::std::cerr << "Didn't find expression after = in "
-                                       "assignment, aborting!\n";
-                        return parse_result_t{nullptr, finish};
-                     }
-                     statement = ::std::make_unique<ASTNode>(
-                        AssignmentStatement{idtok, ::std::move(expr)}
-                     );
-                     after = remainder;
-                  }
-               }
-            }
+         auto [assignment, remainder] = parse_assignment(start, finish);
+         if (assignment) {
+            statement = ::std::move(assignment);
+            after = remainder;
          }
          // If it wasn't identifer = expresion, was it just expression?
          if (!statement) {
-            if (auto [expr, remainder] = parse_expression(start, finish); expr) {
+            if (auto [expr, remainder] = parse_expression_statement(start, finish); expr) {
                statement = ::std::move(expr);
                after = remainder;
             }
@@ -231,17 +213,69 @@ parse_result_t parse_sequence(
                            "aborting.";
             return parse_result_t{nullptr, finish};
          }
-         // We must have a ; between statements.
-         if (!::std::holds_alternative<Tokens::Semicolon>(*after)) {
-            ::std::cerr << "Expected semicolon, aborting.\n";
-            return parse_result_t{nullptr, finish};
-         }
-         start = ++after;
+         start = after;
          statements.statements_.emplace_back(::std::move(statement));
       }
    }
    return parse_result_t{::std::move(statements_node), finish};
 }
+
+parse_result_t parse_assignment(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
+      auto const &idtok = *id;
+      auto const after_id = ::std::next(start);
+      if (after_id != finish) {
+         if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
+            auto const after_eq = ::std::next(after_id);
+            if (after_eq != finish) {
+               auto [expr, remainder] = parse_expression(after_eq, finish);
+               if (expr) {
+                  if (
+                     remainder != finish &&
+                     ::std::holds_alternative<Tokens::Semicolon>(*remainder)
+                  ) {
+                     return {
+                        ::std::make_unique<ASTNode>(
+                           AssignmentStatement{idtok, ::std::move(expr)}
+                        ),
+                        ::std::next(remainder)
+                     };
+                  } else {
+                     ::std::cerr << "Didn't find semicolon after assignment, "
+                                    "aborting!\n";
+                  }
+               } else {
+                  ::std::cerr << "Didn't find expression after = in "
+                                  "assignment, aborting!\n";
+               }
+            }
+         }
+      }
+   }
+   return parse_result_t{nullptr, finish};
+}
+
+parse_result_t parse_expression_statement(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   auto [expr, remainder] = parse_expression(start, finish);
+   if (expr) {
+      if (
+         remainder != finish &&
+         ::std::holds_alternative<Tokens::Semicolon>(*remainder)
+      ) {
+         return {::std::move(expr), ::std::next(remainder)};
+      }
+   }
+   return parse_result_t{nullptr, finish};
+}
+
 
 parse_result_t parse_expression(
    Tokens::toklist_t::iterator start,

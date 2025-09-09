@@ -49,6 +49,10 @@ parse_result_t
 parse_sequence(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 constexpr auto parse_top = parse_sequence;
 parse_result_t
+parse_expression_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_assignment(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
