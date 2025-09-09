@@ -56,7 +56,7 @@ int main()
       ::std::visit(visitor, token);
    }
    auto const [expr, remainder] =
-      Parser::parse_statement_list(tokens.begin(), tokens.end());
+      Parser::parse_sequence(tokens.begin(), tokens.end());
    if (remainder != tokens.end()) {
       ::std::cerr << "Parse error: unexpected token at end of input.\n";
    }

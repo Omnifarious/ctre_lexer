@@ -46,7 +46,8 @@ using astptr_t = ::std::unique_ptr<ASTNode>;
 using parse_result_t = ::std::pair<astptr_t, Tokens::toklist_t::iterator>;
 
 parse_result_t
-parse_statement_list(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_sequence(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+constexpr auto parse_top = parse_sequence;
 parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t

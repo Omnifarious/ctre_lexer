@@ -183,7 +183,7 @@ struct PrefixStringizer {
 //  ((1 + 2) * (3 * 4))
 
 
-parse_result_t parse_statement_list(
+parse_result_t parse_sequence(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish
    )

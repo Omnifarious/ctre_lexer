@@ -11,7 +11,7 @@ SCENARIO(
 ) // This relies on the tokenizer tests having worked.
 {
     using Tokens::tokenize_input;
-    using Parser::parse_statement_list;
+    using Parser::parse_top;
     ::std::vector<::std::uintmax_t> results;
     auto save_result = [&results](::std::uintmax_t result) {
         results.push_back(result);
@@ -24,7 +24,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("The parse succeeds and evaluates correctly")
             {
@@ -44,7 +44,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("The parse succeeds and creates assignment")
             {
@@ -64,7 +64,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Multiplication binds tighter than addition")
             {
@@ -85,7 +85,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Parentheses override natural precedence")
             {
@@ -105,7 +105,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Expression is left-associative")
             {
@@ -126,7 +126,7 @@ SCENARIO(
 
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
 
             THEN("Expression with factors is left-associative")
             {
@@ -147,7 +147,7 @@ SCENARIO(
 
         WHEN("The tokens are parsed")
         {
-            auto [ast_top, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [ast_top, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("All statements are parsed into a statement list")
             {
@@ -171,7 +171,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Nested expressions are handled correctly")
             {
@@ -191,7 +191,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Different number formats are handled in expressions")
             {
@@ -222,7 +222,7 @@ SCENARIO(
 
         WHEN("The tokens are parsed")
         {
-            auto [ast_top, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [ast_top, remainder] = parse_top(tokens.begin(), tokens.end());
 
             THEN("Boolean operators are handled correctly")
             {
@@ -261,7 +261,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Empty input creates empty statement list")
             {
@@ -281,7 +281,7 @@ SCENARIO(
         
         WHEN("The tokens are parsed")
         {
-            auto [result, remainder] = parse_statement_list(tokens.begin(), tokens.end());
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
             
             THEN("Identifier is parsed as expression")
             {
