@@ -193,6 +193,227 @@ SCENARIO("Fixed string generates expected list of tokens.")
         }
     }
 
+    GIVEN("A string with curly brackets for code blocks")
+    {
+        std::string input = "{ x = 42; }";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The curly brackets are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 6);
+
+                // Check open curly bracket "{"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[0]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[0]).value_ == Tokens::CurlyBracket::Open);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[1]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[1]).value_ == "x");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[2]));
+
+                // Check decimal number "42"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[3]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[3]).value_ == 42);
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[4]));
+
+                // Check close curly bracket "}"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[5]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[5]).value_ == Tokens::CurlyBracket::Close);
+            }
+        }
+    }
+
+    GIVEN("A string with if-else keywords")
+    {
+        std::string input = "if (x) y = 1; else y = 0;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The keywords are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 13);
+
+                // Check "if" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
+
+                // Check open paren "("
+                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[1]));
+                REQUIRE(std::get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
+
+                // Check close paren ")"
+                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[3]));
+                REQUIRE(std::get<Tokens::Paren>(tokens[3]).value_ == Tokens::Paren::Close);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "y");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[5]));
+
+                // Check decimal number "1"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[6]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[6]).value_ == 1);
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+
+                // Check "else" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[8]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[8]).value_ == Tokens::Keyword::Else);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[9]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[9]).value_ == "y");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[10]));
+
+                // Check decimal number "0"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[11]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[11]).value_ == 0);
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[12]));
+            }
+        }
+    }
+
+    GIVEN("A string with keywords that should not be confused with identifiers")
+    {
+        std::string input = "ifx = 1; elsif = 2; if_var = 3;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Keywords with additional characters are treated as identifiers")
+            {
+                REQUIRE(tokens.size() == 12);
+
+                // Check identifier "ifx" (not keyword)
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "ifx");
+
+                // Skip equal and number...
+
+                // Check identifier "elsif" (not keyword)
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "elsif");
+
+                // Skip equal and number...
+
+                // Check identifier "if_var" (not keyword)
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "if_var");
+            }
+        }
+    }
+
+    GIVEN("A string with nested curly brackets")
+    {
+        std::string input = "{ { x = 1; } }";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Nested curly brackets are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 8);
+
+                // Check outer open curly bracket "{"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[0]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[0]).value_ == Tokens::CurlyBracket::Open);
+
+                // Check inner open curly bracket "{"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[1]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[1]).value_ == Tokens::CurlyBracket::Open);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[3]));
+
+                // Check decimal number "1"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 1);
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[5]));
+
+                // Check inner close curly bracket "}"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[6]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Close);
+
+                // Check outer close curly bracket "}"
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[7]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[7]).value_ == Tokens::CurlyBracket::Close);
+            }
+        }
+    }
+
+    GIVEN("A complete if-else statement with blocks")
+    {
+        std::string input = "if (x + 0) { result = 1; } else { result = 0; }";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("All tokens including keywords and brackets are correctly identified")
+            {
+                REQUIRE(tokens.size() == 19);
+
+                // Check "if" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
+
+                // Skip condition tokens...
+
+                // Check open curly bracket for if-block
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[6]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Open);
+
+                // Skip assignment tokens...
+
+                // Check close curly bracket for if-block
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[11]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[11]).value_ == Tokens::CurlyBracket::Close);
+
+                // Check "else" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[12]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[12]).value_ == Tokens::Keyword::Else);
+
+                // Check open curly bracket for else-block
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[13]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[13]).value_ == Tokens::CurlyBracket::Open);
+
+                // Skip assignment tokens...
+
+                // Check close curly bracket for else-block
+                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[18]));
+                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[18]).value_ == Tokens::CurlyBracket::Close);
+            }
+        }
+    }
+
     GIVEN("An empty string")
     {
         std::string input = "";

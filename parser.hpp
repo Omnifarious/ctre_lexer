@@ -18,23 +18,10 @@ namespace Parser {
 // Here is a sort of pseudo-BNF for what's being parsed.
 //
 // sequence = statement [ sequence ]
-// statement = assignment | expression_statement
-// assignment = identifier "=" expression ";"
-// expression_statement = expression ";"
-// expression <- expression | expression ( "&&" | "||" ) boolterm
-// boolterm = term | boolterm ( "+" | "-" ) term
-// term <- factor | term ( "*" | "/" ) factor
-// factor <- IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
-//
-// This is the current target grammar for the next sequence of changes. But I'm
-// going to implement the changes for the above grammar first.
-//
-// block = "{" [ sequence ] "}"
-// sequence = statement [ sequence ]
 // statement = if_statement | assignment | expression_statement
-// if_statement = IF "(" expression ")" ( block | expression_statement ) [ ELSE ( block | expression_statement ) ]
+// if_statement = IF "(" expression ")" expression_statement [ ELSE expression_statement ]
 // assignment = identifier "=" expression ";"
-// expression_statement = expression ";"
+// expression_statement = "{" sequence "}" | expression ";"
 // expression <- expression | expression ( "&&" | "||" ) boolterm
 // boolterm = term | boolterm ( "+" | "-" ) term
 // term <- factor | term ( "*" | "/" ) factor

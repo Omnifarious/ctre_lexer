@@ -19,11 +19,13 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_hex>0x[0-9a-fA-F]+)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
+   "(?:(?<keyword>(?:if|else))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
    "(?<operator>[+*/]|-|&&|\\|\\|)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
    "(?<equal>=)|"
+   "(?<curly_bracket>\\{|\\})|"
    "(?<unknown>\\S+)"
    ")"
 };
@@ -52,12 +54,22 @@ struct Paren : Base {
    enum { Open, Close } value_;
 };
 
+struct CurlyBracket : Base {
+   enum { Open, Close } value_;
+};
+
+struct Keyword : Base {
+   enum { If, Else } value_;
+};
+
 struct Semicolon : Base {};
 
 struct Equal : Base {};
 
 using AnyToken = ::std::variant<
-   UnsignedInteger, Identifier, Operator, Paren, Semicolon, Equal
+   UnsignedInteger, Identifier,
+   Operator, Paren, Semicolon, Equal, CurlyBracket,
+   Keyword
 >;
 
 using toklist_t = ::std::vector<AnyToken>;
@@ -128,6 +140,24 @@ toklist_t tokenize_input(I begin, I end)
                default:
                   assert(!"Unexpected parenthesis");
                   break;
+            }
+         } else if (auto const &brace = match.template get<"curly_bracket">()) {
+            switch (brace.to_string()[0]) {
+               case '{':
+                  tokens.emplace_back(CurlyBracket{brace.to_string(), CurlyBracket::Open});
+                  break;
+               case '}':
+                  tokens.emplace_back(CurlyBracket{brace.to_string(), CurlyBracket::Close});
+                  break;
+               default:
+                  assert(!"Unexpected brace");
+                  break;
+            }
+         } else if (auto const &keyword = match.template get<"keyword">()) {
+            if (keyword.to_string() == "if") {
+               tokens.emplace_back(Keyword{keyword.to_string(), Keyword::If});
+            } else if (keyword.to_string() == "else") {
+               tokens.emplace_back(Keyword{keyword.to_string(), Keyword::Else});
             }
          } else if (auto const &semicolon = match.template get<"semicolon">()) {
             tokens.emplace_back(Semicolon{semicolon.to_string()});
