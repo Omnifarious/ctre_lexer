@@ -64,7 +64,6 @@ void SimpleEvaluator::operator()(NumericLiteral const &nl)
 
 void SimpleEvaluator::operator()(StatementList const &sl)
 {
-   int i = 0;
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
       if (statement_function_) {
