@@ -79,6 +79,17 @@ void SimpleEvaluator::operator()(AssignmentStatement const &as)
    current_result_ = 0;
 }
 
+void SimpleEvaluator::operator()(IfStatement const &ifs)
+{
+   ::std::visit(*this, *ifs.condition_);
+   auto const cond = current_result_;
+   if (cond) {
+      ::std::visit(*this, *ifs.then_statement_);
+   } else if (ifs.else_statement_) {
+      ::std::visit(*this, *ifs.else_statement_);
+   }
+}
+
 struct InfixStringizer {
    ::std::ostringstream result_;
 
@@ -109,6 +120,20 @@ struct InfixStringizer {
    {
       result_ << as.id_ << " = ";
       ::std::visit(*this, *as.expression_);
+   }
+   void operator()(IfStatement const &ifs)
+   {
+      result_ << "if (";
+      ::std::visit(*this, *ifs.condition_);
+      result_ << ") {\n";
+      ::std::visit(*this, *ifs.then_statement_);
+      if (!ifs.else_statement_) {
+         result_ << "}\n";
+      } else {
+         result_ << "} else {\n";
+         ::std::visit(*this, *ifs.else_statement_);
+         result_ << "}\n";
+      }
    }
 };
 
@@ -146,6 +171,21 @@ struct PrefixStringizer {
       result_ << "(setq " << as.id_ << " ";
       ::std::visit(*this, *as.expression_);
       result_ << ")";
+   }
+   void operator()(IfStatement const &ifs)
+   {
+      result_ << "(if (";
+      ::std::visit(*this, *ifs.condition_);
+      result_ << ") (progn\n";
+      ::std::visit(*this, *ifs.then_statement_);
+      result_ << ")\n";
+      if (!ifs.else_statement_) {
+         result_ << ")\n";
+      } else {
+         result_ << "    (progn\n";
+         ::std::visit(*this, *ifs.else_statement_);
+         result_ << "))\n";
+      }
    }
 };
 
@@ -194,18 +234,28 @@ parse_result_t parse_sequence(
       while (start != finish) {
          astptr_t statement;
          Tokens::toklist_t::iterator after;
-         auto [assignment, remainder] = parse_assignment(start, finish);
-         if (assignment) {
-            statement = ::std::move(assignment);
+
+         // Try each parser in order
+         if (
+            auto [stmt, remainder] = parse_ifelse(start, finish);
+            stmt
+         ) {
+            statement = std::move(stmt);
+            after = remainder;
+         } else if (
+            auto [stmt, remainder] = parse_assignment(start, finish);
+            stmt
+         ) {
+            statement = std::move(stmt);
+            after = remainder;
+         } else if (
+            auto [stmt, remainder] = parse_expression_statement(start, finish);
+            stmt
+          ) {
+            statement = std::move(stmt);
             after = remainder;
          }
-         // If it wasn't identifer = expresion, was it just expression?
-         if (!statement) {
-            if (auto [expr, remainder] = parse_expression_statement(start, finish); expr) {
-               statement = ::std::move(expr);
-               after = remainder;
-            }
-         }
+
          // It wasn't _any_ of the valid alternatives.
          if (!statement) {
             ::std::cerr << "Didn't find expression or assignment statement, "
@@ -256,6 +306,108 @@ parse_result_t parse_assignment(
       }
    }
    return parse_result_t{nullptr, finish};
+}
+
+parse_result_t parse_ifelse(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
+      !(kw && kw->value_ == Tokens::Keyword::If)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      ::std::cerr << "Expected expression after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Open)
+   ) {
+      ::std::cerr << "Expected ( after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      ::std::cerr << "Expected expression after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto [expr, after_exp] = parse_expression(start, finish);
+   if (!expr) {
+      ::std::cerr << "Expected expression after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   start = after_exp;
+
+   if (start == finish) {
+      ::std::cerr << "Expected ) after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Close)
+   ) {
+      ::std::cerr << "Expected ) after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      ::std::cerr << "Expected then block after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto [then_block, after_then] = parse_expression_statement(start, finish);
+   if (!then_block) {
+      ::std::cerr << "Expected then block after if, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   start = after_then;
+
+   if (start == finish) {
+      return parse_result_t{::std::move(then_block), start};
+   }
+   if (
+      auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
+      !(kw && kw->value_ == Tokens::Keyword::Else)
+   ) {
+      return parse_result_t{
+         ::std::make_unique<ASTNode>(IfStatement{
+            ::std::move(expr),
+            ::std::move(then_block),
+            nullptr
+         }),
+         start
+      };
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      ::std::cerr << "Expected expression statement after else, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto [else_block, after_else] = parse_expression_statement(start, finish);
+   if (!else_block) {
+      ::std::cerr << "Expected expression statement after else, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+
+   return parse_result_t{
+      ::std::make_unique<ASTNode>(IfStatement{
+         ::std::move(expr),
+         ::std::move(then_block),
+         ::std::move(else_block)
+      }),
+      after_else
+   };
 }
 
 parse_result_t parse_expression_statement(

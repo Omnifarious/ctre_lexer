@@ -40,6 +40,8 @@ parse_expression_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t:
 parse_result_t
 parse_assignment(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
+parse_ifelse(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
@@ -94,9 +96,21 @@ public:
    astptr_t expression_;
 };
 
+class IfStatement {
+ public:
+   inline IfStatement(
+      astptr_t condition, astptr_t then_statement, astptr_t else_statement
+   );
+   inline IfStatement(astptr_t condition, astptr_t then_statement);
+
+   astptr_t condition_;
+   astptr_t then_statement_;
+   astptr_t else_statement_;
+};
+
 using allnodes_t = ::std::variant<
    BinaryOperation, Identifier, NumericLiteral,
-   StatementList, AssignmentStatement
+   StatementList, AssignmentStatement, IfStatement
 >;
 
 class ASTNode : public allnodes_t {
@@ -119,6 +133,21 @@ inline AssignmentStatement::AssignmentStatement(Tokens::Identifier const &id, as
 {
 }
 
+inline IfStatement::IfStatement(
+   astptr_t condition, astptr_t then_statement, astptr_t else_statement
+)
+   : condition_(::std::move(condition)),
+     then_statement_(::std::move(then_statement)),
+     else_statement_(::std::move(else_statement))
+{
+}
+
+inline IfStatement::IfStatement(astptr_t condition, astptr_t then_statement)
+   : IfStatement(::std::move(condition), ::std::move(then_statement), nullptr)
+{
+}
+
+
 class SimpleEvaluator {
  public:
    SimpleEvaluator() = default;
@@ -130,6 +159,7 @@ class SimpleEvaluator {
    void operator()(NumericLiteral const &lit);
    void operator()(StatementList const &list);
    void operator()(AssignmentStatement const &as);
+   void operator()(IfStatement const &ifstmt);
    void operator()(ASTNode const &node);
 
    ::std::uintmax_t current_result_ = 0;
