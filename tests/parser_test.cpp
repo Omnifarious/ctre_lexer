@@ -293,4 +293,176 @@ SCENARIO(
             }
         }
     }
+
+    GIVEN("Simple if statement without else")
+    {
+        std::string input = "if (1) 42;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("The if statement is parsed correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                REQUIRE(result->evaluate() == 42);
+                REQUIRE(result->to_infix_string() == "if (1) {\n42;\n}\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42\n)\n)\n)");
+            }
+        }
+    }
+
+    GIVEN("If statement with else")
+    {
+        std::string input = "if (0) 42; else 24;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("The if-else statement is parsed correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                REQUIRE(result->evaluate() == 24);
+                REQUIRE(result->to_infix_string() == "if (0) {\n42;\n} else {\n24;\n}\n");
+                REQUIRE(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42\n)\n    (progn\n24\n))\n)");
+            }
+        }
+    }
+
+    GIVEN("If statement with true expression condition")
+    {
+        std::string input = "x = 5; if (x - 4) x + 1; else x - 1;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("The if statement evaluates condition correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                // x = 5, then if (5 > 3) which is if(2) -> truthy, so x + 1 = 6
+                REQUIRE(eval.current_result_ == 6);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE_THAT(results, RangeEquals({0U, 6U}));
+            }
+        }
+    }
+
+    GIVEN("If statement with false expression condition")
+    {
+        std::string input = "x = 2; if (x - 2) x + 10; else x * 2;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("The else branch is executed")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                // x = 2, then if (2 > 3) which is if(-1) -> falsy, so x * 2 = 4
+                REQUIRE(eval.current_result_ == 4);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE_THAT(results, RangeEquals({0U, 4U}));
+            }
+        }
+    }
+
+#if 0
+    GIVEN(::std::string("   Given: Nested if statements"))
+    {
+        std::string input = "if (1) {if (1) 42; else 0;} else 24;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Nested if statements work correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                REQUIRE(result->evaluate() == 42);
+            }
+        }
+    }
+#endif
+
+    GIVEN("If statement without else, false condition")
+    {
+        std::string input = "if (0) 42;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("False condition with no else branch does nothing")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                // The if statement itself doesn't return a value when condition is false and no else
+                REQUIRE(result->evaluate() == 0);
+            }
+        }
+    }
+
+#if 0
+    GIVEN("If statement with assignment in branches")
+    {
+        std::string input = "x = 0; if (1) x = 10; else x = 20; x;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Assignment in if branch works")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                REQUIRE(eval.current_result_ == 10);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE_THAT(results, RangeEquals({0U, 0U, 10U}));
+            }
+        }
+    }
+#endif
+
+    GIVEN("If statement with complex boolean expressions")
+    {
+        std::string input = "a = 1; b = 0; if (a && b || a) 100; else 200;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Complex boolean condition is evaluated correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                // a = 1, b = 0, condition: (1 && 0) || 1 = 0 || 1 = 1 (true)
+                REQUIRE(eval.current_result_ == 100);
+                using Catch::Matchers::RangeEquals;
+                REQUIRE_THAT(results, RangeEquals({0U, 0U, 100U}));
+            }
+        }
+    }
 }

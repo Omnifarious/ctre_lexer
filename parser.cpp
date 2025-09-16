@@ -113,7 +113,8 @@ struct InfixStringizer {
    {
       for (auto const &statement: sl.statements_) {
          ::std::visit(*this, *statement);
-         result_ << ";\n";
+         if (!::std::holds_alternative<IfStatement>(*statement))
+            result_ << ";\n";
       }
    }
    void operator()(AssignmentStatement const &as)
@@ -128,11 +129,11 @@ struct InfixStringizer {
       result_ << ") {\n";
       ::std::visit(*this, *ifs.then_statement_);
       if (!ifs.else_statement_) {
-         result_ << "}\n";
+         result_ << ";\n}\n";
       } else {
-         result_ << "} else {\n";
+         result_ << ";\n} else {\n";
          ::std::visit(*this, *ifs.else_statement_);
-         result_ << "}\n";
+         result_ << ";\n}\n";
       }
    }
 };
@@ -373,7 +374,14 @@ parse_result_t parse_ifelse(
    start = after_then;
 
    if (start == finish) {
-      return parse_result_t{::std::move(then_block), start};
+      return parse_result_t{
+         ::std::make_unique<ASTNode>(IfStatement{
+            ::std::move(expr),
+            ::std::move(then_block),
+            nullptr
+         }),
+         start
+      };
    }
    if (
       auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
