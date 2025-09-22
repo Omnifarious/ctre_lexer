@@ -30,9 +30,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 42); // StatementList returns 42
-                REQUIRE(result->to_infix_string() == "42;\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    42\n)");
+                CHECK(result->evaluate() == 42); // StatementList returns 42
+                CHECK(result->to_infix_string() == "42;\n");
+                CHECK(result->to_prefix_string() == "(progn\n    42\n)");
             }
         }
     }
@@ -50,9 +50,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 0); // StatementList returns 0
-                REQUIRE(result->to_infix_string() == "x = 42;\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (setq x 42)\n)");
+                CHECK(result->evaluate() == 0); // StatementList returns 0
+                CHECK(result->to_infix_string() == "x = 42;\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (setq x 42)\n)");
             }
         }
     }
@@ -71,9 +71,9 @@ SCENARIO(
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 // Should parse as 2 + (3 * 4) = 14, not (2 + 3) * 4 = 20
-                REQUIRE(result->evaluate() == 14);
-                REQUIRE(result->to_infix_string() == "(2 + (3 * 4));\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (+ 2 (* 3 4))\n)");
+                CHECK(result->evaluate() == 14);
+                CHECK(result->to_infix_string() == "(2 + (3 * 4));\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (+ 2 (* 3 4))\n)");
             }
         }
     }
@@ -91,9 +91,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 20);
-                REQUIRE(result->to_infix_string() == "((2 + 3) * 4);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (* (+ 2 3) 4)\n)");
+                CHECK(result->evaluate() == 20);
+                CHECK(result->to_infix_string() == "((2 + 3) * 4);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (* (+ 2 3) 4)\n)");
             }
         }
     }
@@ -112,9 +112,9 @@ SCENARIO(
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 // Should parse as (8 - 5) - 2 due to left-associative grammar
-                REQUIRE(result->evaluate() == 1);
-                REQUIRE(result->to_infix_string() == "((8 - 5) - 2);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (- (- 8 5) 2)\n)");
+                CHECK(result->evaluate() == 1);
+                CHECK(result->to_infix_string() == "((8 - 5) - 2);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (- (- 8 5) 2)\n)");
             }
         }
     }
@@ -133,9 +133,9 @@ SCENARIO(
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 // Should parse as (8 * 5) / 3 due to left-associative grammar
-                REQUIRE(result->evaluate() == 13);
-                REQUIRE(result->to_infix_string() == "((8 * 5) / 3);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (/ (* 8 5) 3)\n)");
+                CHECK(result->evaluate() == 13);
+                CHECK(result->to_infix_string() == "((8 * 5) / 3);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (/ (* 8 5) 3)\n)");
             }
         }
     }
@@ -156,10 +156,10 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *ast_top);
-                REQUIRE(eval.current_result_ == 30);
-                REQUIRE_THAT(results, RangeEquals({0U, 0U, 30U}));
-                REQUIRE(ast_top->to_infix_string() == "x = 10;\ny = 20;\n(x + y);\n");
-                REQUIRE(ast_top->to_prefix_string() == "(progn\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
+                CHECK(eval.current_result_ == 30);
+                CHECK_THAT(results, RangeEquals({0U, 0U, 30U}));
+                CHECK(ast_top->to_infix_string() == "x = 10;\ny = 20;\n(x + y);\n");
+                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
             }
         }
     }
@@ -177,9 +177,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 15);
-                REQUIRE(result->to_infix_string() == "((2 + 3) * (4 - 1));\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (* (+ 2 3) (- 4 1))\n)");
+                CHECK(result->evaluate() == 15);
+                CHECK(result->to_infix_string() == "((2 + 3) * (4 - 1));\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (* (+ 2 3) (- 4 1))\n)");
             }
         }
     }
@@ -197,9 +197,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 551);
-                REQUIRE(result->to_infix_string() == "((16 + 493) + 42);\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (+ (+ 16 493) 42)\n)");
+                CHECK(result->evaluate() == 551);
+                CHECK(result->to_infix_string() == "((16 + 493) + 42);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (+ (+ 16 493) 42)\n)");
             }
         }
     }
@@ -231,8 +231,8 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *ast_top);
-                REQUIRE(eval.current_result_ == 1);
-                REQUIRE_THAT(results, RangeEquals({
+                CHECK(eval.current_result_ == 1);
+                CHECK_THAT(results, RangeEquals({
                     0U, // five = 5
                     0U, // one = 1
                     0U, // six = 6
@@ -248,8 +248,8 @@ SCENARIO(
                     0U, // 5 || 0 && 0
                     1U  // 1 || 6
                 }));
-                REQUIRE(ast_top->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
-                REQUIRE(ast_top->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
+                CHECK(ast_top->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
+                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
             }
         }
     }
@@ -267,9 +267,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 0);
-                REQUIRE(result->to_infix_string() == "");
-                REQUIRE(result->to_prefix_string() == "(progn\n)");
+                CHECK(result->evaluate() == 0);
+                CHECK(result->to_infix_string() == "");
+                CHECK(result->to_prefix_string() == "(progn\n)");
             }
         }
     }
@@ -287,9 +287,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 0);
-                REQUIRE(result->to_infix_string() == "variable;\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    variable\n)");
+                CHECK(result->evaluate() == 0);
+                CHECK(result->to_infix_string() == "variable;\n");
+                CHECK(result->to_prefix_string() == "(progn\n    variable\n)");
             }
         }
     }
@@ -307,9 +307,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 42);
-                REQUIRE(result->to_infix_string() == "if (1) {\n42;\n}\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42\n)\n)\n)");
+                CHECK(result->evaluate() == 42);
+                CHECK(result->to_infix_string() == "if (1) {\n42;\n}\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42\n)\n)\n)");
             }
         }
     }
@@ -327,9 +327,9 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 24);
-                REQUIRE(result->to_infix_string() == "if (0) {\n42;\n} else {\n24;\n}\n");
-                REQUIRE(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42\n)\n    (progn\n24\n))\n)");
+                CHECK(result->evaluate() == 24);
+                CHECK(result->to_infix_string() == "if (0) {\n42;\n} else {\n24;\n}\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42\n)\n    (progn\n24\n))\n)");
             }
         }
     }
@@ -350,9 +350,9 @@ SCENARIO(
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *result);
                 // x = 5, then if (5 > 3) which is if(2) -> truthy, so x + 1 = 6
-                REQUIRE(eval.current_result_ == 6);
+                CHECK(eval.current_result_ == 6);
                 using Catch::Matchers::RangeEquals;
-                REQUIRE_THAT(results, RangeEquals({0U, 6U}));
+                CHECK_THAT(results, RangeEquals({0U, 6U}));
             }
         }
     }
@@ -373,9 +373,9 @@ SCENARIO(
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *result);
                 // x = 2, then if (2 > 3) which is if(-1) -> falsy, so x * 2 = 4
-                REQUIRE(eval.current_result_ == 4);
+                CHECK(eval.current_result_ == 4);
                 using Catch::Matchers::RangeEquals;
-                REQUIRE_THAT(results, RangeEquals({0U, 4U}));
+                CHECK_THAT(results, RangeEquals({0U, 4U}));
             }
         }
     }
@@ -394,7 +394,7 @@ SCENARIO(
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
-                REQUIRE(result->evaluate() == 42);
+                CHECK(result->evaluate() == 42);
             }
         }
     }
@@ -414,7 +414,7 @@ SCENARIO(
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 // The if statement itself doesn't return a value when condition is false and no else
-                REQUIRE(result->evaluate() == 0);
+                CHECK(result->evaluate() == 0);
             }
         }
     }
@@ -459,9 +459,9 @@ SCENARIO(
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *result);
                 // a = 1, b = 0, condition: (1 && 0) || 1 = 0 || 1 = 1 (true)
-                REQUIRE(eval.current_result_ == 100);
+                CHECK(eval.current_result_ == 100);
                 using Catch::Matchers::RangeEquals;
-                REQUIRE_THAT(results, RangeEquals({0U, 0U, 100U}));
+                CHECK_THAT(results, RangeEquals({0U, 0U, 100U}));
             }
         }
     }
