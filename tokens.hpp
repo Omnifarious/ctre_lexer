@@ -21,7 +21,7 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?:(?<keyword>(?:if|else))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
-   "(?<operator>[+*/=<>]|-|<=|>=|&&|\\|\\|)|"
+   "(?<operator><=|>=|&&|\\|\\||[+*/=<>]|-)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
    "(?<curly_bracket>\\{|\\})|"
