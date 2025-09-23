@@ -21,7 +21,7 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?:(?<keyword>(?:if|else))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
-   "(?<operator><=|>=|&&|\\|\\||[+*/=<>]|-)|"
+   "(?<operator><=|>=|!=|&&|\\|\\||[+*/=<>]|-)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
    "(?<curly_bracket>\\{|\\})|"
@@ -48,7 +48,7 @@ struct Identifier : Base {
 struct Operator : Base {
    enum {
       Plus, Minus, Multiply, Divide, BoolAnd, BoolOr,
-      Equal, Greater, Less, GreaterEqual, LessEqual
+      Equal, Greater, Less, GreaterEqual, LessEqual, NotEqual
    } value_;
 };
 
@@ -130,6 +130,12 @@ toklist_t tokenize_input(I begin, I end)
                      tokens.emplace_back(Operator{op.to_string(), Operator::Greater});
                   }
                   break;
+               case '!':
+                  if (op.to_string() == "!=") {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::NotEqual});
+                     break;
+                  }
+                  [[fallthrough]];
                case '&':
                   if (op.to_string() == "&&") {
                      tokens.emplace_back(Operator{op.to_string(), Operator::BoolAnd});

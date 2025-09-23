@@ -527,7 +527,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
     GIVEN("A string with complex relational expressions")
     {
-        std::string input = "if (x <= 10 && y >= 5 || z > 0) result = x < y;";
+        std::string input =
+            "if (x <= 10 && y >= 5 || z > 0) result = x < y; else result = x != y;";
 
         WHEN("The string is tokenized")
         {
@@ -535,7 +536,7 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Complex relational expressions are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 20);
+                REQUIRE(tokens.size() == 27);
 
                 // Check "if" keyword
                 REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
@@ -615,6 +616,33 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
                 // Check semicolon
                 REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[19]));
+
+                // Check "else" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[20]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[20]).value_ == Tokens::Keyword::Else);
+
+                // Check identifier "result"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[21]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[21]).value_ == "result");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[22]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[22]).value_ == Tokens::Operator::Equal);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[23]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[23]).value_ == "x");
+
+                // Check not equal operator "!="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[24]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[24]).value_ == Tokens::Operator::NotEqual);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[25]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[25]).value_ == "y");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[26]));
             }
         }
     }
