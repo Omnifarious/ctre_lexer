@@ -66,11 +66,9 @@ struct Keyword : Base {
 
 struct Semicolon : Base {};
 
-struct Equal : Base {};
-
 using AnyToken = ::std::variant<
    UnsignedInteger, Identifier,
-   Operator, Paren, Semicolon, Equal, CurlyBracket,
+   Operator, Paren, Semicolon, CurlyBracket,
    Keyword
 >;
 
