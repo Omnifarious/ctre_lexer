@@ -309,7 +309,7 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 CHECK(result->evaluate() == 42);
                 CHECK(result->to_infix_string() == "if (1) {\n42;\n}\n");
-                CHECK(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42\n)\n)\n)");
+                CHECK(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42)\n)\n\n)");
             }
         }
     }
@@ -329,7 +329,7 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 CHECK(result->evaluate() == 24);
                 CHECK(result->to_infix_string() == "if (0) {\n42;\n} else {\n24;\n}\n");
-                CHECK(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42\n)\n    (progn\n24\n))\n)");
+                CHECK(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42)\n    (progn\n24))\n\n)");
             }
         }
     }
@@ -380,10 +380,9 @@ SCENARIO(
         }
     }
 
-#if 0
     GIVEN(::std::string("   Given: Nested if statements"))
     {
-        std::string input = "if (1) {if (1) 42; else 0;} else 24;";
+        std::string input = "if (1) if (1) 42; else 0; else 24;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -398,7 +397,6 @@ SCENARIO(
             }
         }
     }
-#endif
 
     GIVEN("If statement without else, false condition")
     {

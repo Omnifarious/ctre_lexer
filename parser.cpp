@@ -233,41 +233,69 @@ parse_result_t parse_sequence(
       auto &statements = ::std::get<StatementList>(*statements_node);
 
       while (start != finish) {
-         astptr_t statement;
-         Tokens::toklist_t::iterator after;
+         auto [statement, remainder] = parse_statement(start, finish);
 
-         // Try each parser in order
-         if (
-            auto [stmt, remainder] = parse_ifelse(start, finish);
-            stmt
-         ) {
-            statement = std::move(stmt);
-            after = remainder;
-         } else if (
-            auto [stmt, remainder] = parse_assignment(start, finish);
-            stmt
-         ) {
-            statement = std::move(stmt);
-            after = remainder;
-         } else if (
-            auto [stmt, remainder] = parse_expression_statement(start, finish);
-            stmt
-          ) {
-            statement = std::move(stmt);
-            after = remainder;
-         }
-
-         // It wasn't _any_ of the valid alternatives.
          if (!statement) {
-            ::std::cerr << "Didn't find expression or assignment statement, "
-                           "aborting.";
-            return parse_result_t{nullptr, finish};
+            break;
          }
-         start = after;
+         start = remainder;
          statements.statements_.emplace_back(::std::move(statement));
       }
    }
    return parse_result_t{::std::move(statements_node), finish};
+}
+
+parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
+{
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+
+   astptr_t statement;
+   Tokens::toklist_t::iterator after = finish;
+
+   // Try each parser in order
+   if (
+      auto *tok = ::std::get_if<Tokens::CurlyBracket>(&(*start));
+      tok && tok->value_ == Tokens::CurlyBracket::Open
+   ) {
+      start = ::std::next(start);
+      auto [stmt, remainder] = parse_sequence(start, finish);
+      if (!stmt) {
+         ::std::cerr << "Didn't find proper statement sequence after {";
+         return parse_result_t{nullptr, finish};
+      }
+      start = remainder;
+      if (
+         auto *tok = ::std::get_if<Tokens::CurlyBracket>(&(*start));
+         !(tok && tok->value_ == Tokens::CurlyBracket::Close)
+      ) {
+         ::std::cerr << "Didn't find } after statement sequence, aborting!\n";
+         return parse_result_t{nullptr, finish};
+      }
+      start = ::std::next(start); // Eat the close }
+      statement = ::std::move(stmt);
+      after = start;
+   } else if (
+      auto [stmt, remainder] = parse_ifelse(start, finish);
+      stmt
+   ) {
+      statement = std::move(stmt);
+      after = remainder;
+   } else if (
+      auto [stmt, remainder] = parse_assignment(start, finish);
+      stmt
+   ) {
+      statement = std::move(stmt);
+      after = remainder;
+   } else if (
+      auto [stmt, remainder] = parse_expression_statement(start, finish);
+      stmt
+   ) {
+      statement = std::move(stmt);
+      after = remainder;
+   }
+   return parse_result_t{::std::move(statement), after};
 }
 
 parse_result_t parse_assignment(
@@ -366,7 +394,7 @@ parse_result_t parse_ifelse(
       ::std::cerr << "Expected then block after if, aborting!\n";
       return parse_result_t{nullptr, finish};
    }
-   auto [then_block, after_then] = parse_expression_statement(start, finish);
+   auto [then_block, after_then] = parse_statement(start, finish);
    if (!then_block) {
       ::std::cerr << "Expected then block after if, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -402,7 +430,7 @@ parse_result_t parse_ifelse(
       ::std::cerr << "Expected expression statement after else, aborting!\n";
       return parse_result_t{nullptr, finish};
    }
-   auto [else_block, after_else] = parse_expression_statement(start, finish);
+   auto [else_block, after_else] = parse_statement(start, finish);
    if (!else_block) {
       ::std::cerr << "Expected expression statement after else, aborting!\n";
       return parse_result_t{nullptr, finish};
