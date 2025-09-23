@@ -22,10 +22,10 @@ namespace Parser {
 // if_statement = IF "(" expression ")" statement [ ELSE statement ]
 // assignment = identifier "=" expression ";"
 // expression_statement = expression ";"
-// expression <- expression | expression ( "&&" | "||" ) boolterm
+// expression = expression | expression ( "&&" | "||" ) boolterm
 // boolterm = term | boolterm ( "+" | "-" ) term
-// term <- factor | term ( "*" | "/" ) factor
-// factor <- IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
+// term = factor | term ( "*" | "/" ) factor
+// factor = IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
 
 class ASTNode;
 using astptr_t = ::std::unique_ptr<ASTNode>;
