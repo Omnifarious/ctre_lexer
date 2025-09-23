@@ -449,4 +449,293 @@ SCENARIO("Fixed string generates expected list of tokens.")
             }
         }
     }
+
+    GIVEN("A string with relational operators")
+    {
+        std::string input = "x < y; a > b; c <= d; e >= f;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The relational operators are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 16);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
+
+                // Check less than operator "<"
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "y");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
+
+                // Check identifier "a"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "a");
+
+                // Check greater than operator ">"
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Greater);
+
+                // Check identifier "b"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "b");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+
+                // Check identifier "c"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "c");
+
+                // Check less than or equal operator "<="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
+
+                // Check identifier "d"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "d");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
+
+                // Check identifier "e"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[12]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[12]).value_ == "e");
+
+                // Check greater than or equal operator ">="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[13]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[13]).value_ == Tokens::Operator::GreaterEqual);
+
+                // Check identifier "f"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "f");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[15]));
+            }
+        }
+    }
+
+    GIVEN("A string with complex relational expressions")
+    {
+        std::string input = "if (x <= 10 && y >= 5 || z > 0) result = x < y;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Complex relational expressions are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 20);
+
+                // Check "if" keyword
+                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
+                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
+
+                // Check open paren "("
+                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[1]));
+                REQUIRE(std::get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
+
+                // Check less than or equal operator "<="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::LessEqual);
+
+                // Check decimal number "10"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 10);
+
+                // Check boolean operator BoolAnd
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::BoolAnd);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "y");
+
+                // Check greater than or equal operator ">="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[7]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[7]).value_ == Tokens::Operator::GreaterEqual);
+
+                // Check decimal number "5"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[8]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[8]).value_ == 5);
+
+                // Check boolean operator BoolOr
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::BoolOr);
+
+                // Check identifier "z"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "z");
+
+                // Check greater than operator ">"
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[11]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[11]).value_ == Tokens::Operator::Greater);
+
+                // Check decimal number "0"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[12]));
+                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[12]).value_ == 0);
+
+                // Check close paren ")"
+                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[13]));
+                REQUIRE(std::get<Tokens::Paren>(tokens[13]).value_ == Tokens::Paren::Close);
+
+                // Check identifier "result"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "result");
+
+                // Check equal sign "="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[15]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[15]).value_ == Tokens::Operator::Equal);
+
+                // Check identifier "x"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[16]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[16]).value_ == "x");
+
+                // Check less than operator "<"
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[17]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[17]).value_ == Tokens::Operator::Less);
+
+                // Check identifier "y"
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[18]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[18]).value_ == "y");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[19]));
+            }
+        }
+    }
+
+    GIVEN("A string testing edge cases with relational operators")
+    {
+        std::string input = "a<b; c>d; e<=f; g>=h;";  // No spaces around operators
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Relational operators without spaces are correctly tokenized")
+            {
+                REQUIRE(tokens.size() == 16);
+
+                // Test a<b
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "a");
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "b");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
+
+                // Test c>d
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "c");
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Greater);
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "d");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+
+                // Test e<=f
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "e");
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "f");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
+
+                // Test g>=h
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[12]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[12]).value_ == "g");
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[13]));
+                REQUIRE(std::get<Tokens::Operator>(tokens[13]).value_ == Tokens::Operator::GreaterEqual);
+                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
+                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "h");
+
+                // Check semicolon
+                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[15]));
+            }
+        }
+    }
+
+    GIVEN("A string with relational operators and numbers")
+    {
+        std::string input = "42 < 100; 0x10 >= 15; 0755 <= 500;";
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Relational operators with different number formats work correctly")
+            {
+                CHECK(tokens.size() == 12);
+                REQUIRE(tokens.size() >= 12);
+
+                // Check decimal "42"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[0]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[0]).value_ == 42);
+
+                // Check less than operator "<"
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
+                CHECK(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
+
+                // Check decimal "100"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[2]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[2]).value_ == 100);
+
+                // Check semicolon
+                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
+
+                // Check hexadecimal "0x10" -> 16
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 0x10);
+
+                // Check greater than or equal operator ">="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                CHECK(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::GreaterEqual);
+
+                // Check decimal "15"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[6]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[6]).value_ == 15);
+
+                // Check semicolon
+                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+
+                // Check octal "0755" -> 493
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[8]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[8]).value_ == 0755);
+
+                // Check less than or equal operator "<="
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
+                CHECK(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
+
+                // Check decimal "500"
+                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[10]));
+                CHECK(std::get<Tokens::UnsignedInteger>(tokens[10]).value_ == 500);
+
+                // Check semicolon
+                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
+            }
+        }
+    }
 }
