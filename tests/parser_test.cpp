@@ -417,7 +417,6 @@ SCENARIO(
         }
     }
 
-#if 0
     GIVEN("If statement with assignment in branches")
     {
         std::string input = "x = 0; if (1) x = 10; else x = 20; x;";
@@ -439,7 +438,6 @@ SCENARIO(
             }
         }
     }
-#endif
 
     GIVEN("If statement with complex boolean expressions")
     {
