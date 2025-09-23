@@ -307,7 +307,10 @@ parse_result_t parse_assignment(
       auto const &idtok = *id;
       auto const after_id = ::std::next(start);
       if (after_id != finish) {
-         if (::std::holds_alternative<Tokens::Equal>(*after_id)) {
+         if (
+            ::std::holds_alternative<Tokens::Operator>(*after_id) &&
+            ::std::get<Tokens::Operator>(*after_id).value_ == Tokens::Operator::Equal
+         ) {
             auto const after_eq = ::std::next(after_id);
             if (after_eq != finish) {
                auto [expr, remainder] = parse_expression(after_eq, finish);

@@ -25,7 +25,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
                 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[1]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Equal);
                 
                 // Check decimal number "42"
                 REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[2]));
@@ -165,7 +166,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[1]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Equal);
 
                 // Check identifer "true"
                 REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
@@ -214,7 +216,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[1]).value_ == "x");
 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[2]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[2]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[2]).value_ == Tokens::Operator::Equal);
 
                 // Check decimal number "42"
                 REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[3]));
@@ -263,7 +266,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "y");
 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[5]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Equal);
 
                 // Check decimal number "1"
                 REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[6]));
@@ -281,7 +285,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[9]).value_ == "y");
 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[10]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[10]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[10]).value_ == Tokens::Operator::Equal);
 
                 // Check decimal number "0"
                 REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[11]));
@@ -349,7 +354,8 @@ SCENARIO("Fixed string generates expected list of tokens.")
                 REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
 
                 // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Equal>(tokens[3]));
+                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
+                REQUIRE(::std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Equal);
 
                 // Check decimal number "1"
                 REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));

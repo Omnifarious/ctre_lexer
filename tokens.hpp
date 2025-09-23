@@ -21,10 +21,9 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
    "(?:(?<keyword>(?:if|else))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
-   "(?<operator>[+*/]|-|&&|\\|\\|)|"
+   "(?<operator>[+*/=<>]|-|<=|>=|&&|\\|\\|)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
-   "(?<equal>=)|"
    "(?<curly_bracket>\\{|\\})|"
    "(?<unknown>\\S+)"
    ")"
@@ -47,7 +46,10 @@ struct Identifier : Base {
 };
 
 struct Operator : Base {
-   enum { Plus, Minus, Multiply, Divide, BoolAnd, BoolOr } value_;
+   enum {
+      Plus, Minus, Multiply, Divide, BoolAnd, BoolOr,
+      Equal, Greater, Less, GreaterEqual, LessEqual
+   } value_;
 };
 
 struct Paren : Base {
@@ -113,6 +115,23 @@ toklist_t tokenize_input(I begin, I end)
                case '/':
                   tokens.emplace_back(Operator{op.to_string(), Operator::Divide});
                   break;
+               case '=':
+                  tokens.emplace_back(Operator{op.to_string(), Operator::Equal});
+                  break;
+               case '<':
+                  if (op.to_string() == "<=") {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::LessEqual});
+                  } else {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::Less});
+                  }
+                  break;
+               case '>':
+                  if (op.to_string() == ">=") {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::GreaterEqual});
+                  } else {
+                     tokens.emplace_back(Operator{op.to_string(), Operator::Greater});
+                  }
+                  break;
                case '&':
                   if (op.to_string() == "&&") {
                      tokens.emplace_back(Operator{op.to_string(), Operator::BoolAnd});
@@ -161,8 +180,6 @@ toklist_t tokenize_input(I begin, I end)
             }
          } else if (auto const &semicolon = match.template get<"semicolon">()) {
             tokens.emplace_back(Semicolon{semicolon.to_string()});
-         } else if (auto const &equal = match.template get<"equal">()) {
-            tokens.emplace_back(Equal{equal.to_string()});
          } else {
             throw tokenize_error("Unexpected token: " + match.to_string());
          }
