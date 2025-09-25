@@ -461,4 +461,128 @@ SCENARIO(
             }
         }
     }
+
+    GIVEN("Chained relational operators to test associativity")
+    {
+        ::std::string input =
+            "1 < 2 < 3;"          // Should be (1 < 2) < 3 = 1 < 3 = 1
+            "3 > 2 > 1;"          // Should be (3 > 2) > 1 = 1 > 1 = 0
+            "1 <= 2 <= 2;"        // Should be (1 <= 2) <= 2 = 1 <= 2 = 1
+            "5 >= 3 >= 1;"        // Should be (5 >= 3) >= 1 = 1 >= 1 = 1
+            "2 = 2 = 1;"          // Should be (2 = 2) = 1 = 1 = 1 = 1
+            "3 != 2 != 1;";       // Should be (3 != 2) != 1 = 1 != 1 = 0
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Chained relational operators are left-associative")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                CHECK(eval.current_result_ == 0);
+                using Catch::Matchers::RangeEquals;
+                CHECK_THAT(results, RangeEquals({1U, 0U, 1U, 1U, 1U, 0U}));
+                CHECK(result->to_infix_string() == "((1 < 2) < 3);\n((3 > 2) > 1);\n((1 <= 2) <= 2);\n((5 >= 3) >= 1);\n((2 = 2) = 1);\n((3 != 2) != 1);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (< (< 1 2) 3)\n    (> (> 3 2) 1)\n    (<= (<= 1 2) 2)\n    (>= (>= 5 3) 1)\n    (= (= 2 2) 1)\n    (!= (!= 3 2) 1)\n)");
+            }
+        }
+    }
+
+    GIVEN("Complex precedence mixing arithmetic, relational, and boolean operators")
+    {
+        ::std::string input =
+            "2 + 3 * 4 > 10 && 1;"      // ((2 + (3 * 4)) > 10) && 1 = (14 > 10) && 1 = 1 && 1 = 1
+            "5 - 2 <= 3 || 0;"          // ((5 - 2) <= 3) || 0 = (3 <= 3) || 0 = 1 || 0 = 1
+            "6 / 2 = 3 && 4 * 2 != 7;"  // ((6 / 2) = 3) && ((4 * 2) != 7) = (3 = 3) && (8 != 7) = 1 && 1 = 1
+            "1 + 2 > 2 * 1 && 3 - 1 < 4 || 0;"; // (((1 + 2) > (2 * 1)) && ((3 - 1) < 4)) || 0 = ((3 >= 2) && (2 < 4)) || 0 = (1 && 1) || 0 = 1 || 0 = 1
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Operator precedence is correctly handled across all operator types")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                CHECK(eval.current_result_ == 1);
+                using Catch::Matchers::RangeEquals;
+                CHECK_THAT(results, RangeEquals({1U, 1U, 1U, 1U}));
+                CHECK(result->to_infix_string() == "(((2 + (3 * 4)) > 10) && 1);\n(((5 - 2) <= 3) || 0);\n(((6 / 2) = 3) && ((4 * 2) != 7));\n((((1 + 2) > (2 * 1)) && ((3 - 1) < 4)) || 0);\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (&& (> (+ 2 (* 3 4)) 10) 1)\n    (|| (<= (- 5 2) 3) 0)\n    (&& (= (/ 6 2) 3) (!= (* 4 2) 7))\n    (|| (&& (> (+ 1 2) (* 2 1)) (< (- 3 1) 4)) 0)\n)");
+            }
+        }
+    }
+
+    GIVEN("A series of statements using relational operators")
+    {
+        ::std::string input =
+            "5 < 2;"
+            "2 < 2;"
+            "2 < 5;"
+            "5 <= 2;"
+            "2 <= 2;"
+            "2 <= 5;"
+            "5 > 2;"
+            "2 > 2;"
+            "2 > 5;"
+            "5 >= 2;"
+            "2 >= 2;"
+            "2 >= 5;"
+            "5 = 2;"
+            "2 = 2;"
+            "5 != 2;"
+            "2 != 2;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Relational operations are evaluated correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                CHECK(eval.current_result_ == 0);
+                using Catch::Matchers::RangeEquals;
+                CHECK_THAT(results, RangeEquals({
+                    0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0
+                }));
+            }
+        }
+    }
+
+    GIVEN("Some expressions mixing relational operators with other operators")
+    {
+        ::std::string input =
+            "5 > 2 * 3;"
+            "3 * 2 > 5;"
+            "1 != 2 && 1 = 1;"
+            "1 != 0 || 1 = 1;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("Relational operations are evaluated correctly")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                Parser::SimpleEvaluator eval(save_result);
+                ::std::visit(eval, *result);
+                CHECK(eval.current_result_ == 1);
+                using Catch::Matchers::RangeEquals;
+                CHECK_THAT(results, RangeEquals({
+                    0, 1, 1, 1
+                }));
+            }
+        }
+    }
 }
