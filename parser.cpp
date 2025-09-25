@@ -3,6 +3,7 @@
 
 #include <deque>
 #include <sstream>
+#include <array>
 #include "parser.hpp"
 #include "tokens.hpp"
 
@@ -10,7 +11,10 @@ using namespace ::std::string_view_literals;
 
 namespace {
 using sv = ::std::string_view;
-sv constexpr S_op_names[] = {"+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv};
+constexpr auto S_op_names = ::std::array{
+   "+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv,
+   "="sv, ">"sv, "<"sv, ">="sv, "<="sv, "!="sv
+   };
 }
 
 namespace Parser {
@@ -115,6 +119,7 @@ struct InfixStringizer {
    {
       result_ << '(';
       ::std::visit(*this, *op.left_);
+      assert(op.op_ < S_op_names.size());
       result_ << ' ' << S_op_names[op.op_] << ' ';
       ::std::visit(*this, *op.right_);
       result_ << ')';
