@@ -23,8 +23,8 @@ namespace Parser {
 // assignment = identifier "=" expression ";"
 // expression_statement = expression ";"
 // expression = expression | expression ( "&&" | "||" ) boolterm
-// boolterm = relclause | boolterm ( "+" | "-" ) relclause
-// relclause = term | relclause ( "<" | ">" | "<=" | ">=" | "=" | "!=" ) term
+// boolterm = relclause | boolterm ( "<" | ">" | "<=" | ">=" | "=" | "!=" ) relclause
+// relclause = term | relclause ( "+" | "-" ) term
 // term = factor | term ( "*" | "/" ) factor
 // factor = IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
 
