@@ -41,6 +41,24 @@ void SimpleEvaluator::operator()(BinaryOperation const &op)
       case Operator::BoolOr:
          current_result_ = lval || rval ? 1U : 0U;
          break;
+      case Operator::Equal:
+         current_result_ = lval == rval ? 1U : 0U;
+         break;
+      case Operator::NotEqual:
+         current_result_ = lval != rval ? 1U : 0U;
+         break;
+      case Operator::Less:
+         current_result_ = lval < rval ? 1U : 0U;
+         break;
+      case Operator::LessEqual:
+         current_result_ = lval <= rval ? 1U : 0U;
+         break;
+      case Operator::Greater:
+         current_result_ = lval > rval ? 1U : 0U;
+         break;
+      case Operator::GreaterEqual:
+         current_result_ = lval >= rval ? 1U : 0U;
+         break;
       default:
          assert(!"Unexpected operator");
          current_result_ = 0U;
@@ -515,7 +533,57 @@ parse_result_t parse_boolterm(
    Tokens::toklist_t::iterator finish
    )
 {
-   ::std::deque<astptr_t> terms;
+   ::std::deque<astptr_t> boolterms;
+   ::std::deque<Tokens::Operator> operators;
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   while (true) {
+      auto [relclause, remainder] = parse_relclause(start, finish);
+      if (!relclause) {
+         return parse_result_t{nullptr, finish};
+      }
+      boolterms.emplace_back(::std::move(relclause));
+      start = remainder;
+      if (auto const &op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
+         auto const opval = op->value_;
+         if (
+            opval == Tokens::Operator::Less ||
+            opval == Tokens::Operator::LessEqual ||
+            opval == Tokens::Operator::Greater ||
+            opval == Tokens::Operator::GreaterEqual ||
+            opval == Tokens::Operator::Equal ||
+            opval == Tokens::Operator::NotEqual
+         ) {
+            operators.emplace_back(*op);
+            start = ::std::next(remainder);
+         } else {
+            break;
+         }
+      } else {
+         break;
+      }
+   }
+   assert(operators.size() + 1 == boolterms.size());
+   astptr_t top = ::std::move(boolterms.front());
+   boolterms.pop_front();
+   while (!operators.empty()) {
+      auto const op = operators.front();
+      operators.pop_front();
+      top = ::std::make_unique<ASTNode>(BinaryOperation{
+         op.value_, ::std::move(top), ::std::move(boolterms.front())
+      });
+      boolterms.pop_front();
+   }
+   return parse_result_t{::std::move(top), start};
+}
+
+parse_result_t parse_relclause(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   ::std::deque<astptr_t> relclauses;
    ::std::deque<Tokens::Operator> operators;
    if (start == finish) {
       return parse_result_t{nullptr, finish};
@@ -525,7 +593,7 @@ parse_result_t parse_boolterm(
       if (!term) {
          return parse_result_t{nullptr, finish};
       }
-      terms.emplace_back(::std::move(term));
+      relclauses.emplace_back(::std::move(term));
       start = remainder;
       if (auto const &op = ::std::get_if<Tokens::Operator>(&(*remainder))) {
          auto const opval = op->value_;
@@ -542,16 +610,16 @@ parse_result_t parse_boolterm(
          break;
       }
    }
-   assert(operators.size() + 1 == terms.size());
-   astptr_t top = ::std::move(terms.front());
-   terms.pop_front();
+   assert(operators.size() + 1 == relclauses.size());
+   astptr_t top = ::std::move(relclauses.front());
+   relclauses.pop_front();
    while (!operators.empty()) {
       auto const op = operators.front();
       operators.pop_front();
       top = ::std::make_unique<ASTNode>(BinaryOperation{
-         op.value_, ::std::move(top), ::std::move(terms.front())
+         op.value_, ::std::move(top), ::std::move(relclauses.front())
       });
-      terms.pop_front();
+      relclauses.pop_front();
    }
    return parse_result_t{::std::move(top), start};
 }

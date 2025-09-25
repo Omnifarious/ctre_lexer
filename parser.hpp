@@ -52,6 +52,8 @@ parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator 
 parse_result_t
 parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
+parse_relclause(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
 parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
