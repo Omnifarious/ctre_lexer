@@ -21,11 +21,11 @@ SCENARIO(
     {
         std::string input = "42;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("The parse succeeds and evaluates correctly")
             {
                 REQUIRE(result != nullptr);
@@ -41,11 +41,11 @@ SCENARIO(
     {
         std::string input = "x = 42;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("The parse succeeds and creates assignment")
             {
                 REQUIRE(result != nullptr);
@@ -61,11 +61,11 @@ SCENARIO(
     {
         std::string input = "2 + 3 * 4;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Multiplication binds tighter than addition")
             {
                 REQUIRE(result != nullptr);
@@ -82,11 +82,11 @@ SCENARIO(
     {
         std::string input = "(2 + 3) * 4;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Parentheses override natural precedence")
             {
                 REQUIRE(result != nullptr);
@@ -102,11 +102,11 @@ SCENARIO(
     {
         std::string input = "8 - 5 - 2;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Expression is left-associative")
             {
                 REQUIRE(result != nullptr);
@@ -148,7 +148,7 @@ SCENARIO(
         WHEN("The tokens are parsed")
         {
             auto [ast_top, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("All statements are parsed into a statement list")
             {
                 using Catch::Matchers::RangeEquals;
@@ -168,11 +168,11 @@ SCENARIO(
     {
         std::string input = "((2 + 3) * (4 - 1));";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Nested expressions are handled correctly")
             {
                 REQUIRE(result != nullptr);
@@ -188,11 +188,11 @@ SCENARIO(
     {
         std::string input = "0x10 + 0755 + 42;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Different number formats are handled in expressions")
             {
                 REQUIRE(result != nullptr);
@@ -258,11 +258,11 @@ SCENARIO(
     {
         std::string input = "";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Empty input creates empty statement list")
             {
                 REQUIRE(result != nullptr);
@@ -278,11 +278,11 @@ SCENARIO(
     {
         std::string input = "variable;";
         auto tokens = tokenize_input(input.begin(), input.end());
-        
+
         WHEN("The tokens are parsed")
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
-            
+
             THEN("Identifier is parsed as expression")
             {
                 REQUIRE(result != nullptr);
