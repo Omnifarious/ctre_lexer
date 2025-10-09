@@ -36,21 +36,35 @@ int main()
       [](Tokens::Operator const &t) {
          using namespace ::std::literals::string_view_literals;
          using sv = ::std::string_view;
-         sv const op_name[] = {"plus"sv, "minus"sv, "multiply"sv, "divide"sv};
+         constexpr auto op_name = ::std::array{
+            "plus"sv, "minus"sv, "multiply"sv, "divide"sv,
+            "log_and"sv, "log_or"sv,
+            "equal"sv, "greater"sv, "less"sv,
+            "greater_equal"sv, "less_equal"sv, "not_equal"sv
+         };
          ::std::cout << format(" op: \"{}\" -> {}\n", t.orig_text_, op_name[t.value_]);
       },
       [](Tokens::Paren const &t) {
          using namespace ::std::literals::string_view_literals;
          using sv = ::std::string_view;
-         sv const paren_name[] = {"open"sv, "close"sv};
+         sv const paren_name[] = {"open_paren"sv, "close_paren"sv};
          ::std::cout << format("par: \"{}\" -> {}\n", t.orig_text_, paren_name[t.value_]);
+      },
+      [](Tokens::CurlyBracket const &t) {
+         using namespace ::std::literals::string_view_literals;
+         using sv = ::std::string_view;
+         sv const curly_bracket_name[] = {"open_brace"sv, "close_brace"sv};
+         ::std::cout << format("curly_bracket: \"{}\" -> {}\n", t.orig_text_, curly_bracket_name[t.value_]);
+      },
+      [](Tokens::Keyword const &t) {
+         using namespace ::std::literals::string_view_literals;
+         using sv = ::std::string_view;
+         auto constexpr keyword_names = ::std::array{"If"sv, "Else"sv};
+         ::std::cout << format("keyword: \"{}\" -> {}\n", t.orig_text_, keyword_names[t.value_]);
       },
       [](Tokens::Semicolon const &t) {
          ::std::cout << format("sem: \"{}\"\n", t.orig_text_);
       },
-      [](Tokens::Equal const &t) {
-         ::std::cout << format("equ: \"{}\"\n", t.orig_text_);
-      }
    };
    for (auto const &token: tokens) {
       ::std::visit(visitor, token);
