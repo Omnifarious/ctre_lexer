@@ -265,7 +265,7 @@ parse_result_t parse_sequence(
          statements.statements_.emplace_back(::std::move(statement));
       }
    }
-   return parse_result_t{::std::move(statements_node), finish};
+   return parse_result_t{::std::move(statements_node), start};
 }
 
 parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)

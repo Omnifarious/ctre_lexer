@@ -585,4 +585,33 @@ SCENARIO(
             }
         }
     }
+
+    GIVEN("Some input that has erroneously failed in the past.")
+    {
+        AND_GIVEN("A simple if/else that has previously failed.")
+        {
+            ::std::string input =
+                "if (a < b) {\n"
+                "5;\n"
+                "} else {\n"
+                "6;\n"
+                "}\n";
+            auto tokens = tokenize_input(input.begin(), input.end());
+            REQUIRE(tokens.size() == 15);
+
+            WHEN("It is parsed.")
+            {
+                auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+                THEN("It should parse and have the appropriate output.")
+                {
+                    REQUIRE(result != nullptr);
+                    REQUIRE(remainder == tokens.end());
+                    Parser::SimpleEvaluator eval(save_result);
+                    ::std::visit(eval, *result);
+                    CHECK(eval.current_result_ == 6);
+                }
+            }
+        }
+    }
 }
