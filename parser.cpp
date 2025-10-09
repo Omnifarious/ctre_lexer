@@ -503,7 +503,6 @@ parse_result_t parse_expression(
    while (boolterms.size() == operators.size()) {
       auto [boolterm, remainder] = parse_boolterm(start, finish);
       if (!boolterm) {
-         ::std::cerr << "Expected boolterm, parse aborted.\n";
          return parse_result_t{nullptr, finish};
       }
       boolterms.emplace_back(::std::move(boolterm));
@@ -640,7 +639,6 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
    while (true) {
       auto [factor, remainder] = parse_factor(start, finish);
       if (!factor) {
-         ::std::cerr << "Expected factor!\n";
          return {nullptr, finish};
       }
       factors.emplace_back(::std::move(factor));
@@ -712,7 +710,6 @@ parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t
       ::std::cerr << "Expected closing paren, parse aborted.\n";
       return {nullptr, finish};
    }
-   ::std::cerr << "Expected factor, parse aborted.\n";
    return {nullptr, finish};
 }
 
