@@ -19,7 +19,7 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_hex>0x[0-9a-fA-F]+)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
-   "(?:(?<keyword>(?:if|else))(?!\\w))|"
+   "(?:(?<keyword>(?:if|else|while))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
    "(?<operator><=|>=|!=|&&|\\|\\||[+*/=<>]|-)|"
    "(?<paren>[()])|"
@@ -61,7 +61,7 @@ struct CurlyBracket : Base {
 };
 
 struct Keyword : Base {
-   enum { If, Else } value_;
+   enum { If, Else, While } value_;
 };
 
 struct Semicolon : Base {};
@@ -181,6 +181,8 @@ toklist_t tokenize_input(I begin, I end)
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::If});
             } else if (keyword.to_string() == "else") {
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::Else});
+            } else if (keyword.to_string() == "while") {
+               tokens.emplace_back(Keyword{keyword.to_string(), Keyword::While});
             }
          } else if (auto const &semicolon = match.template get<"semicolon">()) {
             tokens.emplace_back(Semicolon{semicolon.to_string()});

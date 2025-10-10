@@ -18,8 +18,10 @@ namespace Parser {
 // Here is a sort of pseudo-BNF for what's being parsed.
 //
 // sequence = statement [ sequence ]
-// statement = if_statement | assignment | expression_statement | "{" sequence "}"
+// statement = if_statement | while_statement | assignment |
+//             expression_statement | "{" sequence "}"
 // if_statement = IF "(" expression ")" statement [ ELSE statement ]
+// while_statement = WHILE "(" expression ")" statement
 // assignment = identifier "=" expression ";"
 // expression_statement = expression ";"
 // expression = expression | expression ( "&&" | "||" ) boolterm

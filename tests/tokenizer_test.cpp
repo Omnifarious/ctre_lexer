@@ -766,4 +766,138 @@ SCENARIO("Fixed string generates expected list of tokens.")
             }
         }
     }
+
+    GIVEN("A some uses of the while keyword.")
+    {
+        std::string input = "while (whilex < 10) {"
+                            "    whilex = whilex + 1;"
+                            "    while5 = 3;"
+                            "    if ( whilex > 5 ) {"
+                            "        while( whilex < 10 ) whilex = whilex + 1;"
+                            "    }"
+                            "}";
+        WHEN("The string is tokenized.")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+            THEN("The while keyword is correctly tokenized.")
+            {
+                using ::std::holds_alternative;
+                using ::std::get;
+
+                REQUIRE(tokens.size() == 38);
+
+                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[0]));
+                CHECK(get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::While);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[1]));
+                CHECK(get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[2]));
+                CHECK(get<Tokens::Identifier>(tokens[2]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[3]));
+                CHECK(get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Less);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[4]).value_ == 10);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[5]));
+                CHECK(get<Tokens::Paren>(tokens[5]).value_ == Tokens::Paren::Close);
+
+                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[6]));
+                CHECK(get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Open);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[7]));
+                CHECK(get<Tokens::Identifier>(tokens[7]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[8]));
+                CHECK(get<Tokens::Operator>(tokens[8]).value_ == Tokens::Operator::Equal);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[9]));
+                CHECK(get<Tokens::Identifier>(tokens[9]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[10]));
+                CHECK(get<Tokens::Operator>(tokens[10]).value_ == Tokens::Operator::Plus);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[11]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[11]).value_ == 1);
+
+                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[12]));
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[13]));
+                CHECK(get<Tokens::Identifier>(tokens[13]).value_ == "while5");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[14]));
+                CHECK(get<Tokens::Operator>(tokens[14]).value_ == Tokens::Operator::Equal);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[15]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[15]).value_ == 3);
+
+                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[16]));
+
+                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[17]));
+                CHECK(get<Tokens::Keyword>(tokens[17]).value_ == Tokens::Keyword::If);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[18]));
+                CHECK(get<Tokens::Paren>(tokens[18]).value_ == Tokens::Paren::Open);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[19]));
+                CHECK(get<Tokens::Identifier>(tokens[19]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[20]));
+                CHECK(get<Tokens::Operator>(tokens[20]).value_ == Tokens::Operator::Greater);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[21]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[21]).value_ == 5);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[22]));
+                CHECK(get<Tokens::Paren>(tokens[22]).value_ == Tokens::Paren::Close);
+
+                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[23]));
+                CHECK(get<Tokens::CurlyBracket>(tokens[23]).value_ == Tokens::CurlyBracket::Open);
+
+                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[24]));
+                CHECK(get<Tokens::Keyword>(tokens[24]).value_ == Tokens::Keyword::While);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[25]));
+                CHECK(get<Tokens::Paren>(tokens[25]).value_ == Tokens::Paren::Open);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[26]));
+                CHECK(get<Tokens::Identifier>(tokens[26]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[27]));
+                CHECK(get<Tokens::Operator>(tokens[27]).value_ == Tokens::Operator::Less);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[28]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[28]).value_ == 10);
+
+                REQUIRE(holds_alternative<Tokens::Paren>(tokens[29]));
+                CHECK(get<Tokens::Paren>(tokens[29]).value_ == Tokens::Paren::Close);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[30]));
+                CHECK(get<Tokens::Identifier>(tokens[30]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[31]));
+                CHECK(get<Tokens::Operator>(tokens[31]).value_ == Tokens::Operator::Equal);
+
+                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[32]));
+                CHECK(get<Tokens::Identifier>(tokens[32]).value_ == "whilex");
+
+                REQUIRE(holds_alternative<Tokens::Operator>(tokens[33]));
+                CHECK(get<Tokens::Operator>(tokens[33]).value_ == Tokens::Operator::Plus);
+
+                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[34]));
+                CHECK(get<Tokens::UnsignedInteger>(tokens[34]).value_ == 1);
+
+                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[35]));
+
+                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[36]));
+                CHECK(get<Tokens::CurlyBracket>(tokens[36]).value_ == Tokens::CurlyBracket::Close);
+
+                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[37]));
+                CHECK(get<Tokens::CurlyBracket>(tokens[37]).value_ == Tokens::CurlyBracket::Close);
+            }
+        }
+    }
+
 }
