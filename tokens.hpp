@@ -183,12 +183,18 @@ toklist_t tokenize_input(I begin, I end)
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::Else});
             } else if (keyword.to_string() == "while") {
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::While});
+            } else {
+               assert(!"Unexpected keyword");
             }
          } else if (auto const &semicolon = match.template get<"semicolon">()) {
             tokens.emplace_back(Semicolon{semicolon.to_string()});
+         } else if (auto const &unknown = match.template get<"unknown">()) {
+            throw tokenize_error("Unknown token: " + unknown.to_string());
          } else {
-            throw tokenize_error("Unexpected token: " + match.to_string());
+            assert(!"Failed to handle token.");
          }
+      } else {
+         throw tokenize_error("Unable to tokenize starting at...");
       }
    }
    return tokens;

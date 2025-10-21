@@ -143,7 +143,7 @@ SCENARIO("Fixed string generates expected list of tokens.")
             {
                 REQUIRE_THROWS_WITH(
                     tokenize_input(input.begin(), input.end()),
-                    Catch::Matchers::ContainsSubstring("Unexpected token:  @")
+                    Catch::Matchers::ContainsSubstring("Unknown token: @")
                 );
             }
         }
