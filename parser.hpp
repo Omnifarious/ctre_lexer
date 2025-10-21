@@ -50,6 +50,8 @@ parse_assignment(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator 
 parse_result_t
 parse_ifelse(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
+parse_while(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
 parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
@@ -118,9 +120,17 @@ class IfStatement {
    astptr_t else_statement_;
 };
 
+class WhileStatement {
+ public:
+   inline WhileStatement(astptr_t condition, astptr_t repeated);
+
+   astptr_t condition_;
+   astptr_t repeated_;
+};
+
 using allnodes_t = ::std::variant<
    BinaryOperation, Identifier, NumericLiteral,
-   StatementList, AssignmentStatement, IfStatement
+   StatementList, AssignmentStatement, IfStatement, WhileStatement
 >;
 
 class ASTNode : public allnodes_t {
@@ -157,6 +167,10 @@ inline IfStatement::IfStatement(astptr_t condition, astptr_t then_statement)
 {
 }
 
+inline WhileStatement::WhileStatement(astptr_t condition, astptr_t repeated)
+   : condition_(::std::move(condition)), repeated_(::std::move(repeated))
+{
+}
 
 class SimpleEvaluator {
  public:
@@ -170,6 +184,7 @@ class SimpleEvaluator {
    void operator()(StatementList const &list);
    void operator()(AssignmentStatement const &as);
    void operator()(IfStatement const &ifstmt);
+   void operator()(WhileStatement const &whilestmt);
    void operator()(ASTNode const &node);
 
    ::std::uintmax_t current_result_ = 0;

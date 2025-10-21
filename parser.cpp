@@ -112,6 +112,17 @@ void SimpleEvaluator::operator()(IfStatement const &ifs)
    }
 }
 
+void SimpleEvaluator::operator()(WhileStatement const &whilestmt)
+{
+   ::std::visit(*this, *whilestmt.condition_);
+   auto cond = current_result_;
+   while (cond) {
+      ::std::visit(*this, *whilestmt.repeated_);
+      ::std::visit(*this, *whilestmt.condition_);
+      cond = current_result_;
+   }
+}
+
 struct InfixStringizer {
    ::std::ostringstream result_;
 
@@ -158,6 +169,14 @@ struct InfixStringizer {
          ::std::visit(*this, *ifs.else_statement_);
          result_ << ";\n}\n";
       }
+   }
+   void operator()(WhileStatement const &whilestmt)
+   {
+      result_ << "while (";
+      ::std::visit(*this, *whilestmt.condition_);
+      result_ << ") {\n";
+      ::std::visit(*this, *whilestmt.repeated_);
+      result_ << ";\n}\n";
    }
 };
 
@@ -210,6 +229,14 @@ struct PrefixStringizer {
          ::std::visit(*this, *ifs.else_statement_);
          result_ << "))\n";
       }
+   }
+   void operator()(WhileStatement const &whilestmt)
+   {
+      result_ << "(while (";
+      ::std::visit(*this, *whilestmt.condition_);
+      result_ << ") (progn\n";
+      ::std::visit(*this, *whilestmt.repeated_);
+      result_ << "))\n";
    }
 };
 
@@ -306,6 +333,12 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
       statement = std::move(stmt);
       after = remainder;
    } else if (
+      auto [stmt, remainder] = parse_while(start, finish);
+      stmt
+   ) {
+      statement = std::move(stmt);
+      after = remainder;
+   } else if (
       auto [stmt, remainder] = parse_assignment(start, finish);
       stmt
    ) {
@@ -319,6 +352,64 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
       after = remainder;
    }
    return parse_result_t{::std::move(statement), after};
+}
+
+parse_result_t parse_while(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   // While
+   if (
+      auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
+      !(kw && kw->value_ == Tokens::Keyword::While)
+   ) {
+      // Not a while
+      return parse_result_t{nullptr, finish};
+   }
+
+   start = ::std::next(start);
+   if (
+      start == finish ||
+      !::std::holds_alternative<Tokens::Paren>(*start) ||
+      ::std::get<Tokens::Paren>(*start).value_ != Tokens::Paren::Open
+   ) {
+      ::std::cerr << "Expected ( after while, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+
+   start = ::std::next(start);
+   auto [expr, after_exp] = parse_expression(start, finish);
+   if (!expr) {
+      ::std::cerr << "Expected expression after while, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+
+   start = after_exp;
+   if (
+      start == finish ||
+      !::std::holds_alternative<Tokens::Paren>(*start) ||
+      ::std::get<Tokens::Paren>(*start).value_ != Tokens::Paren::Close
+   ) {
+      ::std::cerr << "Expected ) after while, aborting!\n";
+   }
+
+   start = ::std::next(start);
+   auto [repeated, after_repeated] = parse_statement(start, finish);
+   if (!repeated) {
+      ::std::cerr << "Expected statement after while, aborting!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   astptr_t while_statement = ::std::make_unique<ASTNode>(
+      WhileStatement{::std::move(expr), ::std::move(repeated)}
+   );
+   return parse_result_t{
+      ::std::move(while_statement),
+      after_repeated
+   };
 }
 
 parse_result_t parse_assignment(
