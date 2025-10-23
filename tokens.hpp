@@ -72,6 +72,32 @@ using AnyToken = ::std::variant<
    Keyword
 >;
 
+inline bool operator==(AnyToken const &a, AnyToken const &b)
+{
+   if (a.index() != b.index()) {
+      return false;
+   }
+   if (a.valueless_by_exception()) {
+      return true;
+   }
+   return ::std::visit(
+      [&b](auto const &a_val) {
+         using T = ::std::decay_t<decltype(a_val)>;
+         auto const &b_val = ::std::get<T>(b);
+         if constexpr (::std::is_same_v<T, Semicolon>) {
+            return true;
+         } else {
+            return a_val.value_ == b_val.value_;
+         }
+      }, a
+   );
+}
+
+inline bool operator!=(AnyToken const &a, AnyToken const &b)
+{
+   return !(a == b);
+}
+
 using toklist_t = ::std::vector<AnyToken>;
 
 class tokenize_error : public ::std::runtime_error {
