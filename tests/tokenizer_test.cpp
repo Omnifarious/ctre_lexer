@@ -950,5 +950,4 @@ SCENARIO("Fixed string generates expected list of tokens.")
             }
         }
     }
-
 }
