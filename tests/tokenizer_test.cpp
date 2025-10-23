@@ -175,6 +175,77 @@ SCENARIO("Fixed string generates expected list of tokens.")
         }
     }
 
+    GIVEN("A string with the 'var' keyword for declaration and initialization")
+    {
+        std::string input = "var x = 3;";
+        namespace t = Tokens;
+        const t::toklist_t expected_tokens{
+            t::Keyword{"var", t::Keyword::Var},
+            t::Identifier{"x", "x"},
+            t::Operator{"=", t::Operator::Equal},
+            t::UnsignedInteger{"3", 3},
+            t::Semicolon{}
+        };
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The 'var' declaration is correctly tokenized")
+            {
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
+            }
+        }
+    }
+
+    GIVEN("Multiple 'var' declarations including one without initializer")
+    {
+        std::string input = "var a; var b = 2;";
+        namespace t = Tokens;
+        const t::toklist_t expected_tokens{
+            t::Keyword{"var", t::Keyword::Var},
+            t::Identifier{"a", "a"},
+            t::Semicolon{},
+            t::Keyword{"var", t::Keyword::Var},
+            t::Identifier{"b", "b"},
+            t::Operator{"=", t::Operator::Equal},
+            t::UnsignedInteger{"2", 2},
+            t::Semicolon{}
+        };
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("Both 'var' statements are correctly tokenized")
+            {
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
+            }
+        }
+    }
+
+    GIVEN("Identifiers like 'vars' should not be mistaken for the 'var' keyword")
+    {
+        std::string input = "vars = 5;";
+        namespace t = Tokens;
+        const t::toklist_t expected_tokens{
+            t::Identifier{"vars", "vars"},
+            t::Operator{"=", t::Operator::Equal},
+            t::UnsignedInteger{"5", 5},
+            t::Semicolon{}
+        };
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("'vars' is tokenized as an identifier, not a 'var' keyword")
+            {
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
+            }
+        }
+    }
+
     GIVEN("A string with curly brackets for code blocks")
     {
         std::string input = "{ x = 42; }";
