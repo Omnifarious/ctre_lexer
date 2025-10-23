@@ -149,7 +149,7 @@ SCENARIO("Fixed string generates expected list of tokens.")
         }
     }
 
-    GIVEN("A string with a boolean operators")
+    GIVEN("A string with boolean operators")
     {
         std::string input = "x = true && false || true;";
         namespace t = Tokens;
