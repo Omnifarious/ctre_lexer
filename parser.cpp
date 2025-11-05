@@ -71,8 +71,9 @@ void SimpleEvaluator::operator()(BinaryOperation const &op)
 
 void SimpleEvaluator::operator()(Identifier const &id)
 {
-   auto const it = identifiers_.find(id.name_);
-   if (it == identifiers_.end()) {
+   auto &current_frame = stack_.back();
+   auto const it = current_frame.find(id.name_);
+   if (it == current_frame.end()) {
       current_result_ = 0;
    } else {
       current_result_ = it->second;
@@ -86,18 +87,30 @@ void SimpleEvaluator::operator()(NumericLiteral const &nl)
 
 void SimpleEvaluator::operator()(StatementList const &sl)
 {
+   if (sl.identifiers_) {
+      auto const &identifiers = *sl.identifiers_;
+      stackframe_t frame;
+      frame.reserve(identifiers.size());
+      for (auto const &id: identifiers) {
+         frame[id] = 0;
+      }
+      stack_.push_back(::std::move(frame));
+   }
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
       if (statement_function_) {
          statement_function_(current_result_);
       }
    }
+   if (sl.identifiers_) {
+      stack_.pop_back();
+   }
 }
 
 void SimpleEvaluator::operator()(AssignmentStatement const &as)
 {
    ::std::visit(*this, *as.expression_);
-   identifiers_[as.id_] = current_result_;
+   stack_.back()[as.id_] = current_result_;
    current_result_ = 0;
 }
 
@@ -121,6 +134,14 @@ void SimpleEvaluator::operator()(WhileStatement const &whilestmt)
       ::std::visit(*this, *whilestmt.condition_);
       cond = current_result_;
    }
+}
+
+void SimpleEvaluator::operator()(VarDecl const &vd)
+{
+   ::std::visit(*this, *vd.expression_);
+   auto &current_frame = stack_.back();
+   current_frame[vd.id_] = current_result_;
+   current_result_ = 0;
 }
 
 struct InfixStringizer {
@@ -177,6 +198,12 @@ struct InfixStringizer {
       result_ << ") {\n";
       ::std::visit(*this, *whilestmt.repeated_);
       result_ << ";\n}\n";
+   }
+   void operator()(VarDecl const &vd)
+   {
+      result_ << "var " << vd.id_ << " = ";
+      ::std::visit(*this, *vd.expression_);
+      result_ << ";\n";
    }
 };
 
@@ -237,6 +264,12 @@ struct PrefixStringizer {
       result_ << ") (progn\n";
       ::std::visit(*this, *whilestmt.repeated_);
       result_ << "))\n";
+   }
+   void operator()(VarDecl const &vd)
+   {
+      result_ << "var " << vd.id_ << " = ";
+      ::std::visit(*this, *vd.expression_);
+      result_ << ";\n";
    }
 };
 
@@ -339,6 +372,12 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
       statement = std::move(stmt);
       after = remainder;
    } else if (
+      auto [stmt, remainder] = parse_vardecl(start, finish);
+      stmt
+   ) {
+      statement = std::move(stmt);
+      after = remainder;
+   } else if (
       auto [stmt, remainder] = parse_assignment(start, finish);
       stmt
    ) {
@@ -409,6 +448,63 @@ parse_result_t parse_while(
    return parse_result_t{
       ::std::move(while_statement),
       after_repeated
+   };
+}
+
+parse_result_t parse_vardecl(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish
+)
+{
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   // Look for var keyword
+   if (
+      auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
+      !(kw && kw->value_ == Tokens::Keyword::Var)
+   ) {
+      // Not a var keyword
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   auto const id = ::std::get_if<Tokens::Identifier>(&(*start));
+   if (!id) {
+      return parse_result_t{nullptr, finish};
+   }
+   auto const &idtok = *id;
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *eq = ::std::get_if<Tokens::Operator>(&(*start));
+      !(eq && eq->value_ == Tokens::Operator::Equal)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   auto [expr, remainder] = parse_expression(start, finish);
+   if (!expr) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      remainder == finish ||
+      !::std::holds_alternative<Tokens::Semicolon>(*remainder)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   return {
+      ::std::make_unique<ASTNode>(
+         VarDecl{idtok, ::std::move(expr)}
+      ),
+      ::std::next(remainder)
    };
 }
 

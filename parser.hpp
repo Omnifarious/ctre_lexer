@@ -11,6 +11,7 @@
 #include <utility>
 #include <functional>
 #include <unordered_map>
+#include <unordered_set>
 #include "tokens.hpp"
 
 namespace Parser {
@@ -48,6 +49,8 @@ parse_result_t
 parse_expression_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_assignment(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_result_t
+parse_vardecl(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
 parse_ifelse(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
 parse_result_t
@@ -96,12 +99,24 @@ public:
    StatementList() = default;
 
    ::std::vector<astptr_t> statements_;
+   ::std::unique_ptr<::std::unordered_set<std::string>> identifiers_;
 };
 
 class AssignmentStatement {
 public:
    // Can't define this here because we don't know what an ASTNode is yet.
    inline AssignmentStatement(
+      Tokens::Identifier const &id, astptr_t expression
+   );
+
+   ::std::string id_;
+   astptr_t expression_;
+};
+
+class VarDecl {
+public:
+   // Can't define this here because we don't know what an ASTNode is yet.
+   inline VarDecl(
       Tokens::Identifier const &id, astptr_t expression
    );
 
@@ -131,7 +146,8 @@ class WhileStatement {
 
 using allnodes_t = ::std::variant<
    BinaryOperation, Identifier, NumericLiteral,
-   StatementList, AssignmentStatement, IfStatement, WhileStatement
+   StatementList, AssignmentStatement, IfStatement, WhileStatement,
+   VarDecl
 >;
 
 class ASTNode : public allnodes_t {
@@ -146,6 +162,11 @@ public:
 // Now we know what an ASTNode is, so we can define these.
 inline BinaryOperation::BinaryOperation(OpType op, astptr_t left, astptr_t right)
    : op_(op), left_(::std::move(left)), right_(::std::move(right))
+{
+}
+
+inline VarDecl::VarDecl(Tokens::Identifier const &id, astptr_t expression)
+   : id_(id.value_), expression_(::std::move(expression))
 {
 }
 
@@ -175,10 +196,10 @@ inline WhileStatement::WhileStatement(astptr_t condition, astptr_t repeated)
 
 class SimpleEvaluator {
  public:
-   SimpleEvaluator() = default;
+   SimpleEvaluator() { init_stack(*this); }
    explicit SimpleEvaluator(::std::function<void(uintmax_t statement_result)> f)
       : statement_function_(::std::move(f))
-   {}
+   { init_stack(*this); }
    void operator()(BinaryOperation const &op);
    void operator()(Identifier const &id);
    void operator()(NumericLiteral const &lit);
@@ -186,11 +207,19 @@ class SimpleEvaluator {
    void operator()(AssignmentStatement const &as);
    void operator()(IfStatement const &ifstmt);
    void operator()(WhileStatement const &whilestmt);
+   void operator()(VarDecl const &vd);
    void operator()(ASTNode const &node);
 
    ::std::uintmax_t current_result_ = 0;
    ::std::function<void(uintmax_t statement_result)> statement_function_;
-   ::std::unordered_map<std::string, ::std::uintmax_t> identifiers_;
+   using stackframe_t = ::std::unordered_map<std::string, ::std::uintmax_t>;
+   ::std::vector<stackframe_t> stack_;
+
+ private:
+   static void init_stack(SimpleEvaluator &evaluator) {
+      // Create global frame.
+      evaluator.stack_.push_back(stackframe_t{});
+   }
 };
 
 } // namespace Parser
