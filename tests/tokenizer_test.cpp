@@ -18,38 +18,18 @@ SCENARIO("Fixed string generates expected list of tokens.")
             
             THEN("The correct tokens are generated")
             {
-                REQUIRE(tokens.size() == 8);
-                
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
-                
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
-                REQUIRE(::std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Equal);
-                
-                // Check decimal number "42"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[2]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[2]).value_ == 42);
-                
-                // Check plus operator "+"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Plus);
-                
-                // Check decimal number "3"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 3);
-                
-                // Check multiply operator "*"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Multiply);
-                
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "y");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Identifier{"x", "x"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"42", 42},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"3", 3},
+                    t::Operator{"*", t::Operator::Multiply},
+                    t::Identifier{"y", "y"},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -64,27 +44,15 @@ SCENARIO("Fixed string generates expected list of tokens.")
             
             THEN("Different number formats are recognized with correct values")
             {
-                REQUIRE(tokens.size() == 5);
-                
-                // Check hexadecimal "0x1A" -> 26
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[0]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[0]).value_ == 0x1A);
-                
-                // Check plus operator "+"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Plus);
-                
-                // Check octal "0755" -> 493
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[2]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[2]).value_ == 0755);
-                
-                // Check plus operator "+"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Plus);
-                
-                // Check decimal "123"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 123);
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::UnsignedInteger{"0x1A", 0x1A},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"0755", 0755},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"123", 123}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -99,30 +67,16 @@ SCENARIO("Fixed string generates expected list of tokens.")
             
             THEN("Parentheses and semicolon are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 6);
-                
-                // Check open paren "("
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[0]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[0]).value_ == Tokens::Paren::Open);
-                
-                // Check identifier "a"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[1]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[1]).value_ == "a");
-                
-                // Check minus operator "-"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[2]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[2]).value_ == Tokens::Operator::Minus);
-                
-                // Check identifier "b"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[3]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[3]).value_ == "b");
-                
-                // Check close paren ")"
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[4]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[4]).value_ == Tokens::Paren::Close);
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[5]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"a", "a"},
+                    t::Operator{"-", t::Operator::Minus},
+                    t::Identifier{"b", "b"},
+                    t::Paren{")", t::Paren::Close},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -256,30 +210,16 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("The curly brackets are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 6);
-
-                // Check open curly bracket "{"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[0]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[0]).value_ == Tokens::CurlyBracket::Open);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[1]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[1]).value_ == "x");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[2]));
-                REQUIRE(::std::get<Tokens::Operator>(tokens[2]).value_ == Tokens::Operator::Equal);
-
-                // Check decimal number "42"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[3]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[3]).value_ == 42);
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[4]));
-
-                // Check close curly bracket "}"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[5]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[5]).value_ == Tokens::CurlyBracket::Close);
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"42", 42},
+                    t::Semicolon{},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -294,57 +234,23 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("The keywords are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 13);
-
-                // Check "if" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
-
-                // Check open paren "("
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[1]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
-
-                // Check close paren ")"
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[3]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[3]).value_ == Tokens::Paren::Close);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "y");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                REQUIRE(::std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Equal);
-
-                // Check decimal number "1"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[6]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[6]).value_ == 1);
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
-
-                // Check "else" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[8]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[8]).value_ == Tokens::Keyword::Else);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[9]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[9]).value_ == "y");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[10]));
-                REQUIRE(::std::get<Tokens::Operator>(tokens[10]).value_ == Tokens::Operator::Equal);
-
-                // Check decimal number "0"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[11]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[11]).value_ == 0);
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[12]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Keyword{"if", t::Keyword::If},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"x", "x"},
+                    t::Paren{")", t::Paren::Close},
+                    t::Identifier{"y", "y"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
+                    t::Keyword{"else", t::Keyword::Else},
+                    t::Identifier{"y", "y"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"0", 0},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -359,23 +265,22 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Keywords with additional characters are treated as identifiers")
             {
-                REQUIRE(tokens.size() == 12);
-
-                // Check identifier "ifx" (not keyword)
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "ifx");
-
-                // Skip equal and number...
-
-                // Check identifier "elsif" (not keyword)
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "elsif");
-
-                // Skip equal and number...
-
-                // Check identifier "if_var" (not keyword)
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "if_var");
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Identifier{"ifx", "ifx"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
+                    t::Identifier{"elsif", "elsif"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"2", 2},
+                    t::Semicolon{},
+                    t::Identifier{"if_var", "if_var"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"3", 3},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -390,38 +295,18 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Nested curly brackets are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 8);
-
-                // Check outer open curly bracket "{"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[0]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[0]).value_ == Tokens::CurlyBracket::Open);
-
-                // Check inner open curly bracket "{"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[1]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[1]).value_ == Tokens::CurlyBracket::Open);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
-                REQUIRE(::std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Equal);
-
-                // Check decimal number "1"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 1);
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[5]));
-
-                // Check inner close curly bracket "}"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[6]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Close);
-
-                // Check outer close curly bracket "}"
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[7]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[7]).value_ == Tokens::CurlyBracket::Close);
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -436,37 +321,29 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("All tokens including keywords and brackets are correctly identified")
             {
-                REQUIRE(tokens.size() == 19);
-
-                // Check "if" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
-
-                // Skip condition tokens...
-
-                // Check open curly bracket for if-block
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[6]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Open);
-
-                // Skip assignment tokens...
-
-                // Check close curly bracket for if-block
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[11]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[11]).value_ == Tokens::CurlyBracket::Close);
-
-                // Check "else" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[12]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[12]).value_ == Tokens::Keyword::Else);
-
-                // Check open curly bracket for else-block
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[13]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[13]).value_ == Tokens::CurlyBracket::Open);
-
-                // Skip assignment tokens...
-
-                // Check close curly bracket for else-block
-                REQUIRE(std::holds_alternative<Tokens::CurlyBracket>(tokens[18]));
-                REQUIRE(std::get<Tokens::CurlyBracket>(tokens[18]).value_ == Tokens::CurlyBracket::Close);
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Keyword{"if", t::Keyword::If},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"0", 0},
+                    t::Paren{")", t::Paren::Close},
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
+                    t::Identifier{"result", "result"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close},
+                    t::Keyword{"else", t::Keyword::Else},
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
+                    t::Identifier{"result", "result"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"0", 0},
+                    t::Semicolon{},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -481,7 +358,9 @@ SCENARIO("Fixed string generates expected list of tokens.")
             
             THEN("No tokens are generated")
             {
-                REQUIRE(tokens.empty());
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{};
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -496,7 +375,9 @@ SCENARIO("Fixed string generates expected list of tokens.")
             
             THEN("No tokens are generated")
             {
-                REQUIRE(tokens.empty());
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{};
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -511,67 +392,26 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("The relational operators are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 16);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "x");
-
-                // Check less than operator "<"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "y");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
-
-                // Check identifier "a"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "a");
-
-                // Check greater than operator ">"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Greater);
-
-                // Check identifier "b"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "b");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
-
-                // Check identifier "c"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "c");
-
-                // Check less than or equal operator "<="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
-
-                // Check identifier "d"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "d");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
-
-                // Check identifier "e"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[12]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[12]).value_ == "e");
-
-                // Check greater than or equal operator ">="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[13]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[13]).value_ == Tokens::Operator::GreaterEqual);
-
-                // Check identifier "f"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "f");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[15]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Identifier{"x", "x"},
+                    t::Operator{"<", t::Operator::Less},
+                    t::Identifier{"y", "y"},
+                    t::Semicolon{},
+                    t::Identifier{"a", "a"},
+                    t::Operator{">", t::Operator::Greater},
+                    t::Identifier{"b", "b"},
+                    t::Semicolon{},
+                    t::Identifier{"c", "c"},
+                    t::Operator{"<=", t::Operator::LessEqual},
+                    t::Identifier{"d", "d"},
+                    t::Semicolon{},
+                    t::Identifier{"e", "e"},
+                    t::Operator{">=", t::Operator::GreaterEqual},
+                    t::Identifier{"f", "f"},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -587,113 +427,37 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Complex relational expressions are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 27);
-
-                // Check "if" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[0]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::If);
-
-                // Check open paren "("
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[1]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "x");
-
-                // Check less than or equal operator "<="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[3]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::LessEqual);
-
-                // Check decimal number "10"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 10);
-
-                // Check boolean operator BoolAnd
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::BoolAnd);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "y");
-
-                // Check greater than or equal operator ">="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[7]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[7]).value_ == Tokens::Operator::GreaterEqual);
-
-                // Check decimal number "5"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[8]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[8]).value_ == 5);
-
-                // Check boolean operator BoolOr
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::BoolOr);
-
-                // Check identifier "z"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "z");
-
-                // Check greater than operator ">"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[11]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[11]).value_ == Tokens::Operator::Greater);
-
-                // Check decimal number "0"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[12]));
-                REQUIRE(std::get<Tokens::UnsignedInteger>(tokens[12]).value_ == 0);
-
-                // Check close paren ")"
-                REQUIRE(std::holds_alternative<Tokens::Paren>(tokens[13]));
-                REQUIRE(std::get<Tokens::Paren>(tokens[13]).value_ == Tokens::Paren::Close);
-
-                // Check identifier "result"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "result");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[15]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[15]).value_ == Tokens::Operator::Equal);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[16]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[16]).value_ == "x");
-
-                // Check less than operator "<"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[17]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[17]).value_ == Tokens::Operator::Less);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[18]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[18]).value_ == "y");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[19]));
-
-                // Check "else" keyword
-                REQUIRE(std::holds_alternative<Tokens::Keyword>(tokens[20]));
-                REQUIRE(std::get<Tokens::Keyword>(tokens[20]).value_ == Tokens::Keyword::Else);
-
-                // Check identifier "result"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[21]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[21]).value_ == "result");
-
-                // Check equal sign "="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[22]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[22]).value_ == Tokens::Operator::Equal);
-
-                // Check identifier "x"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[23]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[23]).value_ == "x");
-
-                // Check not equal operator "!="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[24]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[24]).value_ == Tokens::Operator::NotEqual);
-
-                // Check identifier "y"
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[25]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[25]).value_ == "y");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[26]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Keyword{"if", t::Keyword::If},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"<=", t::Operator::LessEqual},
+                    t::UnsignedInteger{"10", 10},
+                    t::Operator{"&&", t::Operator::BoolAnd},
+                    t::Identifier{"y", "y"},
+                    t::Operator{">=", t::Operator::GreaterEqual},
+                    t::UnsignedInteger{"5", 5},
+                    t::Operator{"||", t::Operator::BoolOr},
+                    t::Identifier{"z", "z"},
+                    t::Operator{">", t::Operator::Greater},
+                    t::UnsignedInteger{"0", 0},
+                    t::Paren{")", t::Paren::Close},
+                    t::Identifier{"result", "result"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"<", t::Operator::Less},
+                    t::Identifier{"y", "y"},
+                    t::Semicolon{},
+                    t::Keyword{"else", t::Keyword::Else},
+                    t::Identifier{"result", "result"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::Identifier{"x", "x"},
+                    t::Operator{"!=", t::Operator::NotEqual},
+                    t::Identifier{"y", "y"},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -708,51 +472,29 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Relational operators without spaces are correctly tokenized")
             {
-                REQUIRE(tokens.size() == 16);
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Identifier{"a", "a"},
+                    t::Operator{"<", t::Operator::Less},
+                    t::Identifier{"b", "b"},
+                    t::Semicolon{},
 
-                // Test a<b
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[0]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[0]).value_ == "a");
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[2]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[2]).value_ == "b");
+                    t::Identifier{"c", "c"},
+                    t::Operator{">", t::Operator::Greater},
+                    t::Identifier{"d", "d"},
+                    t::Semicolon{},
 
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
+                    t::Identifier{"e", "e"},
+                    t::Operator{"<=", t::Operator::LessEqual},
+                    t::Identifier{"f", "f"},
+                    t::Semicolon{},
 
-                // Test c>d
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[4]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[4]).value_ == "c");
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::Greater);
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[6]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[6]).value_ == "d");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
-
-                // Test e<=f
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[8]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[8]).value_ == "e");
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[10]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[10]).value_ == "f");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
-
-                // Test g>=h
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[12]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[12]).value_ == "g");
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[13]));
-                REQUIRE(std::get<Tokens::Operator>(tokens[13]).value_ == Tokens::Operator::GreaterEqual);
-                REQUIRE(std::holds_alternative<Tokens::Identifier>(tokens[14]));
-                REQUIRE(std::get<Tokens::Identifier>(tokens[14]).value_ == "h");
-
-                // Check semicolon
-                REQUIRE(std::holds_alternative<Tokens::Semicolon>(tokens[15]));
+                    t::Identifier{"g", "g"},
+                    t::Operator{">=", t::Operator::GreaterEqual},
+                    t::Identifier{"h", "h"},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -767,53 +509,22 @@ SCENARIO("Fixed string generates expected list of tokens.")
 
             THEN("Relational operators with different number formats work correctly")
             {
-                CHECK(tokens.size() == 12);
-                REQUIRE(tokens.size() >= 12);
-
-                // Check decimal "42"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[0]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[0]).value_ == 42);
-
-                // Check less than operator "<"
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[1]));
-                CHECK(std::get<Tokens::Operator>(tokens[1]).value_ == Tokens::Operator::Less);
-
-                // Check decimal "100"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[2]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[2]).value_ == 100);
-
-                // Check semicolon
-                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[3]));
-
-                // Check hexadecimal "0x10" -> 16
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[4]).value_ == 0x10);
-
-                // Check greater than or equal operator ">="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[5]));
-                CHECK(std::get<Tokens::Operator>(tokens[5]).value_ == Tokens::Operator::GreaterEqual);
-
-                // Check decimal "15"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[6]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[6]).value_ == 15);
-
-                // Check semicolon
-                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[7]));
-
-                // Check octal "0755" -> 493
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[8]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[8]).value_ == 0755);
-
-                // Check less than or equal operator "<="
-                REQUIRE(std::holds_alternative<Tokens::Operator>(tokens[9]));
-                CHECK(std::get<Tokens::Operator>(tokens[9]).value_ == Tokens::Operator::LessEqual);
-
-                // Check decimal "500"
-                REQUIRE(std::holds_alternative<Tokens::UnsignedInteger>(tokens[10]));
-                CHECK(std::get<Tokens::UnsignedInteger>(tokens[10]).value_ == 500);
-
-                // Check semicolon
-                CHECK(std::holds_alternative<Tokens::Semicolon>(tokens[11]));
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::UnsignedInteger{"42", 42},
+                    t::Operator{"<", t::Operator::Less},
+                    t::UnsignedInteger{"100", 100},
+                    t::Semicolon{},
+                    t::UnsignedInteger{"0x10", 0x10},
+                    t::Operator{">=", t::Operator::GreaterEqual},
+                    t::UnsignedInteger{"15", 15},
+                    t::Semicolon{},
+                    t::UnsignedInteger{"0755", 0755},
+                    t::Operator{"<=", t::Operator::LessEqual},
+                    t::UnsignedInteger{"500", 500},
+                    t::Semicolon{}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
@@ -832,121 +543,54 @@ SCENARIO("Fixed string generates expected list of tokens.")
             auto tokens = tokenize_input(input.begin(), input.end());
             THEN("The while keyword is correctly tokenized.")
             {
-                using ::std::holds_alternative;
-                using ::std::get;
+                namespace t = Tokens;
+                const t::toklist_t expected_tokens{
+                    t::Keyword{"while", t::Keyword::While},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"<", t::Operator::Less},
+                    t::UnsignedInteger{"10", 10},
+                    t::Paren{")", t::Paren::Close},
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
 
-                REQUIRE(tokens.size() == 38);
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
 
-                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[0]));
-                CHECK(get<Tokens::Keyword>(tokens[0]).value_ == Tokens::Keyword::While);
+                    t::Identifier{"while5", "while5"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::UnsignedInteger{"3", 3},
+                    t::Semicolon{},
 
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[1]));
-                CHECK(get<Tokens::Paren>(tokens[1]).value_ == Tokens::Paren::Open);
+                    t::Keyword{"if", t::Keyword::If},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{">", t::Operator::Greater},
+                    t::UnsignedInteger{"5", 5},
+                    t::Paren{")", t::Paren::Close},
+                    t::CurlyBracket{"{", t::CurlyBracket::Open},
 
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[2]));
-                CHECK(get<Tokens::Identifier>(tokens[2]).value_ == "whilex");
+                    t::Keyword{"while", t::Keyword::While},
+                    t::Paren{"(", t::Paren::Open},
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"<", t::Operator::Less},
+                    t::UnsignedInteger{"10", 10},
+                    t::Paren{")", t::Paren::Close},
 
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[3]));
-                CHECK(get<Tokens::Operator>(tokens[3]).value_ == Tokens::Operator::Less);
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"=", t::Operator::Equal},
+                    t::Identifier{"whilex", "whilex"},
+                    t::Operator{"+", t::Operator::Plus},
+                    t::UnsignedInteger{"1", 1},
+                    t::Semicolon{},
 
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[4]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[4]).value_ == 10);
-
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[5]));
-                CHECK(get<Tokens::Paren>(tokens[5]).value_ == Tokens::Paren::Close);
-
-                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[6]));
-                CHECK(get<Tokens::CurlyBracket>(tokens[6]).value_ == Tokens::CurlyBracket::Open);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[7]));
-                CHECK(get<Tokens::Identifier>(tokens[7]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[8]));
-                CHECK(get<Tokens::Operator>(tokens[8]).value_ == Tokens::Operator::Equal);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[9]));
-                CHECK(get<Tokens::Identifier>(tokens[9]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[10]));
-                CHECK(get<Tokens::Operator>(tokens[10]).value_ == Tokens::Operator::Plus);
-
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[11]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[11]).value_ == 1);
-
-                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[12]));
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[13]));
-                CHECK(get<Tokens::Identifier>(tokens[13]).value_ == "while5");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[14]));
-                CHECK(get<Tokens::Operator>(tokens[14]).value_ == Tokens::Operator::Equal);
-
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[15]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[15]).value_ == 3);
-
-                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[16]));
-
-                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[17]));
-                CHECK(get<Tokens::Keyword>(tokens[17]).value_ == Tokens::Keyword::If);
-
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[18]));
-                CHECK(get<Tokens::Paren>(tokens[18]).value_ == Tokens::Paren::Open);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[19]));
-                CHECK(get<Tokens::Identifier>(tokens[19]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[20]));
-                CHECK(get<Tokens::Operator>(tokens[20]).value_ == Tokens::Operator::Greater);
-
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[21]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[21]).value_ == 5);
-
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[22]));
-                CHECK(get<Tokens::Paren>(tokens[22]).value_ == Tokens::Paren::Close);
-
-                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[23]));
-                CHECK(get<Tokens::CurlyBracket>(tokens[23]).value_ == Tokens::CurlyBracket::Open);
-
-                REQUIRE(holds_alternative<Tokens::Keyword>(tokens[24]));
-                CHECK(get<Tokens::Keyword>(tokens[24]).value_ == Tokens::Keyword::While);
-
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[25]));
-                CHECK(get<Tokens::Paren>(tokens[25]).value_ == Tokens::Paren::Open);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[26]));
-                CHECK(get<Tokens::Identifier>(tokens[26]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[27]));
-                CHECK(get<Tokens::Operator>(tokens[27]).value_ == Tokens::Operator::Less);
-
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[28]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[28]).value_ == 10);
-
-                REQUIRE(holds_alternative<Tokens::Paren>(tokens[29]));
-                CHECK(get<Tokens::Paren>(tokens[29]).value_ == Tokens::Paren::Close);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[30]));
-                CHECK(get<Tokens::Identifier>(tokens[30]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[31]));
-                CHECK(get<Tokens::Operator>(tokens[31]).value_ == Tokens::Operator::Equal);
-
-                REQUIRE(holds_alternative<Tokens::Identifier>(tokens[32]));
-                CHECK(get<Tokens::Identifier>(tokens[32]).value_ == "whilex");
-
-                REQUIRE(holds_alternative<Tokens::Operator>(tokens[33]));
-                CHECK(get<Tokens::Operator>(tokens[33]).value_ == Tokens::Operator::Plus);
-
-                REQUIRE(holds_alternative<Tokens::UnsignedInteger>(tokens[34]));
-                CHECK(get<Tokens::UnsignedInteger>(tokens[34]).value_ == 1);
-
-                REQUIRE(holds_alternative<Tokens::Semicolon>(tokens[35]));
-
-                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[36]));
-                CHECK(get<Tokens::CurlyBracket>(tokens[36]).value_ == Tokens::CurlyBracket::Close);
-
-                REQUIRE(holds_alternative<Tokens::CurlyBracket>(tokens[37]));
-                CHECK(get<Tokens::CurlyBracket>(tokens[37]).value_ == Tokens::CurlyBracket::Close);
+                    t::CurlyBracket{"}", t::CurlyBracket::Close},
+                    t::CurlyBracket{"}", t::CurlyBracket::Close}
+                };
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
             }
         }
     }
