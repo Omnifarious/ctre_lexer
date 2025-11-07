@@ -37,34 +37,89 @@ using astptr_t = ::std::unique_ptr<ASTNode>;
 
 using parse_result_t = ::std::pair<astptr_t, Tokens::toklist_t::iterator>;
 
+namespace priv_ {
+class parse_context;
+}
+
 parse_result_t
-parse_sequence(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
-constexpr auto parse_top = parse_sequence;
-parse_result_t
-parse_statement(
+parse_top(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish
 );
+
 parse_result_t
-parse_expression_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_sequence(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+
 parse_result_t
-parse_assignment(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_statement(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_vardecl(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_expression_statement(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_ifelse(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_assignment(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_while(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_vardecl(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_expression(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_ifelse(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_boolterm(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_while(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_relclause(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_expression(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_boolterm(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 parse_result_t
-parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish);
+parse_relclause(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+parse_result_t
+parse_term(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+parse_result_t
+parse_factor(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
 
 class BinaryOperation {
 public:

@@ -305,18 +305,63 @@ struct PrefixStringizer {
 //
 //  ((1 + 2) * (3 * 4))
 
+namespace priv_ {
+class parse_context {
+ public:
+   ::std::vector<StatementList *> block_stack_;
+};
+
+class scope_frame {
+ public:
+   scope_frame(parse_context &ctx, StatementList *block) : ctx_(ctx)
+   {
+      ctx_.block_stack_.push_back(block);
+   }
+   scope_frame(const scope_frame &) = delete;
+   scope_frame &operator=(const scope_frame &) = delete;
+   scope_frame(scope_frame &&) = delete;
+   scope_frame &operator=(scope_frame &&) = delete;
+   ~scope_frame()
+   {
+      pop_now();
+   }
+   void pop_now()
+   {
+      if (!popped_) {
+         ctx_.block_stack_.pop_back();
+         popped_ = true;
+      }
+   }
+
+ private:
+   bool popped_ = false;
+   parse_context &ctx_;
+
+   void *operator new(size_t size) = delete;
+};
+}
+
+using namespace priv_;
+
+parse_result_t parse_top(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
+{
+   parse_context ctx;
+   return parse_sequence(start, finish, ctx);
+}
 
 parse_result_t parse_sequence(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
-   )
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
+   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node));
    {
       auto &statements = ::std::get<StatementList>(*statements_node);
 
       while (start != finish) {
-         auto [statement, remainder] = parse_statement(start, finish);
+         auto [statement, remainder] = parse_statement(start, finish, ctx);
 
          if (!statement) {
             break;
@@ -328,7 +373,11 @@ parse_result_t parse_sequence(
    return parse_result_t{::std::move(statements_node), start};
 }
 
-parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
+parse_result_t parse_statement(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    if (start == finish) {
       return parse_result_t{nullptr, finish};
@@ -343,7 +392,7 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
       tok && tok->value_ == Tokens::CurlyBracket::Open
    ) {
       start = ::std::next(start);
-      auto [stmt, remainder] = parse_sequence(start, finish);
+      auto [stmt, remainder] = parse_sequence(start, finish, ctx);
       if (!stmt) {
          ::std::cerr << "Didn't find proper statement sequence after {";
          return parse_result_t{nullptr, finish};
@@ -360,31 +409,31 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
       statement = ::std::move(stmt);
       after = start;
    } else if (
-      auto [stmt, remainder] = parse_ifelse(start, finish);
+      auto [stmt, remainder] = parse_ifelse(start, finish, ctx);
       stmt
    ) {
       statement = std::move(stmt);
       after = remainder;
    } else if (
-      auto [stmt, remainder] = parse_while(start, finish);
+      auto [stmt, remainder] = parse_while(start, finish, ctx);
       stmt
    ) {
       statement = std::move(stmt);
       after = remainder;
    } else if (
-      auto [stmt, remainder] = parse_vardecl(start, finish);
+      auto [stmt, remainder] = parse_vardecl(start, finish, ctx);
       stmt
    ) {
       statement = std::move(stmt);
       after = remainder;
    } else if (
-      auto [stmt, remainder] = parse_assignment(start, finish);
+      auto [stmt, remainder] = parse_assignment(start, finish, ctx);
       stmt
    ) {
       statement = std::move(stmt);
       after = remainder;
    } else if (
-      auto [stmt, remainder] = parse_expression_statement(start, finish);
+      auto [stmt, remainder] = parse_expression_statement(start, finish, ctx);
       stmt
    ) {
       statement = std::move(stmt);
@@ -395,7 +444,8 @@ parse_result_t parse_statement(Tokens::toklist_t::iterator start, Tokens::toklis
 
 parse_result_t parse_while(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
    if (start == finish) {
@@ -421,7 +471,7 @@ parse_result_t parse_while(
    }
 
    start = ::std::next(start);
-   auto [expr, after_exp] = parse_expression(start, finish);
+   auto [expr, after_exp] = parse_expression(start, finish, ctx);
    if (!expr) {
       ::std::cerr << "Expected expression after while, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -437,7 +487,7 @@ parse_result_t parse_while(
    }
 
    start = ::std::next(start);
-   auto [repeated, after_repeated] = parse_statement(start, finish);
+   auto [repeated, after_repeated] = parse_statement(start, finish, ctx);
    if (!repeated) {
       ::std::cerr << "Expected statement after while, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -453,7 +503,8 @@ parse_result_t parse_while(
 
 parse_result_t parse_vardecl(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
    if (start == finish) {
@@ -490,7 +541,7 @@ parse_result_t parse_vardecl(
    }
    start = ::std::next(start);
 
-   auto [expr, remainder] = parse_expression(start, finish);
+   auto [expr, remainder] = parse_expression(start, finish, ctx);
    if (!expr) {
       return parse_result_t{nullptr, finish};
    }
@@ -510,7 +561,8 @@ parse_result_t parse_vardecl(
 
 parse_result_t parse_assignment(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
    if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
@@ -523,7 +575,8 @@ parse_result_t parse_assignment(
          ) {
             auto const after_eq = ::std::next(after_id);
             if (after_eq != finish) {
-               auto [expr, remainder] = parse_expression(after_eq, finish);
+               auto [expr, remainder] =
+                  parse_expression(after_eq, finish, ctx);
                if (expr) {
                   if (
                      remainder != finish &&
@@ -552,7 +605,8 @@ parse_result_t parse_assignment(
 
 parse_result_t parse_ifelse(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
    if (start == finish) {
@@ -583,7 +637,7 @@ parse_result_t parse_ifelse(
       ::std::cerr << "Expected expression after if, aborting!\n";
       return parse_result_t{nullptr, finish};
    }
-   auto [expr, after_exp] = parse_expression(start, finish);
+   auto [expr, after_exp] = parse_expression(start, finish, ctx);
    if (!expr) {
       ::std::cerr << "Expected expression after if, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -607,7 +661,7 @@ parse_result_t parse_ifelse(
       ::std::cerr << "Expected then block after if, aborting!\n";
       return parse_result_t{nullptr, finish};
    }
-   auto [then_block, after_then] = parse_statement(start, finish);
+   auto [then_block, after_then] = parse_statement(start, finish, ctx);
    if (!then_block) {
       ::std::cerr << "Expected then block after if, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -643,7 +697,7 @@ parse_result_t parse_ifelse(
       ::std::cerr << "Expected expression statement after else, aborting!\n";
       return parse_result_t{nullptr, finish};
    }
-   auto [else_block, after_else] = parse_statement(start, finish);
+   auto [else_block, after_else] = parse_statement(start, finish, ctx);
    if (!else_block) {
       ::std::cerr << "Expected expression statement after else, aborting!\n";
       return parse_result_t{nullptr, finish};
@@ -661,10 +715,11 @@ parse_result_t parse_ifelse(
 
 parse_result_t parse_expression_statement(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
-   auto [expr, remainder] = parse_expression(start, finish);
+   auto [expr, remainder] = parse_expression(start, finish, ctx);
    if (expr) {
       if (
          remainder != finish &&
@@ -679,8 +734,9 @@ parse_result_t parse_expression_statement(
 
 parse_result_t parse_expression(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
-   )
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    ::std::deque<astptr_t> boolterms;
    ::std::deque<Tokens::Operator> operators;
@@ -688,7 +744,7 @@ parse_result_t parse_expression(
       return parse_result_t{nullptr, finish};
    }
    while (boolterms.size() == operators.size()) {
-      auto [boolterm, remainder] = parse_boolterm(start, finish);
+      auto [boolterm, remainder] = parse_boolterm(start, finish, ctx);
       if (!boolterm) {
          return parse_result_t{nullptr, finish};
       }
@@ -721,8 +777,9 @@ parse_result_t parse_expression(
 
 parse_result_t parse_boolterm(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
-   )
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    ::std::deque<astptr_t> boolterms;
    ::std::deque<Tokens::Operator> operators;
@@ -730,7 +787,7 @@ parse_result_t parse_boolterm(
       return parse_result_t{nullptr, finish};
    }
    while (true) {
-      auto [relclause, remainder] = parse_relclause(start, finish);
+      auto [relclause, remainder] = parse_relclause(start, finish, ctx);
       if (!relclause) {
          return parse_result_t{nullptr, finish};
       }
@@ -771,7 +828,8 @@ parse_result_t parse_boolterm(
 
 parse_result_t parse_relclause(
    Tokens::toklist_t::iterator start,
-   Tokens::toklist_t::iterator finish
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
 )
 {
    ::std::deque<astptr_t> relclauses;
@@ -780,7 +838,7 @@ parse_result_t parse_relclause(
       return parse_result_t{nullptr, finish};
    }
    while (true) {
-      auto [term, remainder] = parse_term(start, finish);
+      auto [term, remainder] = parse_term(start, finish, ctx);
       if (!term) {
          return parse_result_t{nullptr, finish};
       }
@@ -816,7 +874,11 @@ parse_result_t parse_relclause(
 }
 
 parse_result_t
-parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
+parse_term(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    ::std::deque<astptr_t> factors;
    ::std::deque<Tokens::Operator> operators;
@@ -824,7 +886,7 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
       return {nullptr, finish};
    }
    while (true) {
-      auto [factor, remainder] = parse_factor(start, finish);
+      auto [factor, remainder] = parse_factor(start, finish, ctx);
       if (!factor) {
          return {nullptr, finish};
       }
@@ -864,7 +926,11 @@ parse_term(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish
    return {::std::move(top), start};
 }
 
-parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
+parse_result_t parse_factor(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
 {
    if (start == finish) {
       return {nullptr, finish};
@@ -883,7 +949,7 @@ parse_result_t parse_factor(Tokens::toklist_t::iterator start, Tokens::toklist_t
    } else if (auto const op = ::std::get_if<Tokens::Paren>(&tok)) {
       if (op->value_ == Tokens::Paren::Open) {
          ++start;
-         auto [expr, remainder] = parse_boolterm(start, finish);
+         auto [expr, remainder] = parse_boolterm(start, finish, ctx);
          if (remainder != finish) {
             if (
                auto const opclose = ::std::get_if<Tokens::Paren>(&(*remainder))
