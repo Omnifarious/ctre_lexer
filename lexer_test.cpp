@@ -59,7 +59,7 @@ int main()
       [](Tokens::Keyword const &t) {
          using namespace ::std::literals::string_view_literals;
          using sv = ::std::string_view;
-         auto constexpr keyword_names = ::std::array{"If"sv, "Else"sv};
+         auto constexpr keyword_names = ::std::array{"If"sv, "Else"sv, "While"sv, "Var"sv};
          ::std::cout << format("keyword: \"{}\" -> {}\n", t.orig_text_, keyword_names[t.value_]);
       },
       [](Tokens::Semicolon const &t) {
@@ -70,7 +70,7 @@ int main()
       ::std::visit(visitor, token);
    }
    auto const [expr, remainder] =
-      Parser::parse_sequence(tokens.begin(), tokens.end());
+      Parser::parse_top(tokens.begin(), tokens.end());
    if (remainder != tokens.end()) {
       ::std::cerr << "Parse error: unexpected token at end of input.\n";
    }
