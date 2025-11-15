@@ -10,7 +10,6 @@
 using namespace ::std::string_view_literals;
 
 namespace {
-using sv = ::std::string_view;
 constexpr auto S_op_names = ::std::array{
    "+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv,
    "="sv, ">"sv, "<"sv, ">="sv, "<="sv, "!="sv
