@@ -14,7 +14,7 @@ using sv = ::std::string_view;
 constexpr auto S_op_names = ::std::array{
    "+"sv, "-"sv, "*"sv, "/"sv, "&&"sv, "||"sv,
    "="sv, ">"sv, "<"sv, ">="sv, "<="sv, "!="sv
-   };
+};
 }
 
 namespace Parser {
@@ -71,6 +71,9 @@ void SimpleEvaluator::operator()(BinaryOperation const &op)
 
 void SimpleEvaluator::operator()(Identifier const &id)
 {
+   // TODO Update this to work properly.
+   current_result_ = 0U;
+#if 0
    auto &current_frame = stack_.back();
    auto const it = current_frame.find(id.name_);
    if (it == current_frame.end()) {
@@ -78,6 +81,7 @@ void SimpleEvaluator::operator()(Identifier const &id)
    } else {
       current_result_ = it->second;
    }
+#endif
 }
 
 void SimpleEvaluator::operator()(NumericLiteral const &nl)
@@ -87,7 +91,10 @@ void SimpleEvaluator::operator()(NumericLiteral const &nl)
 
 void SimpleEvaluator::operator()(StatementList const &sl)
 {
-   if (sl.identifiers_) {
+   current_result_ = 0U;
+   // TODO fix this
+#if 0
+   if (sl.var_declarations_) {
       auto const &identifiers = *sl.identifiers_;
       stackframe_t frame;
       frame.reserve(identifiers.size());
@@ -105,12 +112,16 @@ void SimpleEvaluator::operator()(StatementList const &sl)
    if (sl.identifiers_) {
       stack_.pop_back();
    }
+#endif
 }
 
 void SimpleEvaluator::operator()(AssignmentStatement const &as)
 {
+   // TODO fix this
+#if 0
    ::std::visit(*this, *as.expression_);
    stack_.back()[as.id_] = current_result_;
+#endif
    current_result_ = 0;
 }
 
@@ -138,9 +149,12 @@ void SimpleEvaluator::operator()(WhileStatement const &whilestmt)
 
 void SimpleEvaluator::operator()(VarDecl const &vd)
 {
+   // TODO fix this
+#if 0
    ::std::visit(*this, *vd.expression_);
    auto &current_frame = stack_.back();
-   current_frame[vd.id_] = current_result_;
+   current_frame[vd.identifier_] = current_result_;
+#endif
    current_result_ = 0;
 }
 
@@ -156,14 +170,17 @@ struct InfixStringizer {
       ::std::visit(*this, *op.right_);
       result_ << ')';
    }
+
    void operator()(Identifier const &id)
    {
-      result_ << id.name_;
+      result_ << id.scope_->var_declarations_[id.varidx_];
    }
+
    void operator()(NumericLiteral const &nl)
    {
       result_ << nl.value_;
    }
+
    void operator()(StatementList const &sl)
    {
       for (auto const &statement: sl.statements_) {
@@ -172,11 +189,14 @@ struct InfixStringizer {
             result_ << ";\n";
       }
    }
+
    void operator()(AssignmentStatement const &as)
    {
-      result_ << as.id_ << " = ";
+      auto const &id = as.identifier_;
+      result_ << id.scope_->var_declarations_[id.varidx_] << " = ";
       ::std::visit(*this, *as.expression_);
    }
+
    void operator()(IfStatement const &ifs)
    {
       result_ << "if (";
@@ -191,6 +211,7 @@ struct InfixStringizer {
          result_ << ";\n}\n";
       }
    }
+
    void operator()(WhileStatement const &whilestmt)
    {
       result_ << "while (";
@@ -199,9 +220,11 @@ struct InfixStringizer {
       ::std::visit(*this, *whilestmt.repeated_);
       result_ << ";\n}\n";
    }
+
    void operator()(VarDecl const &vd)
    {
-      result_ << "var " << vd.id_ << " = ";
+      auto const &id = vd.identifier_;
+      result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
       ::std::visit(*this, *vd.expression_);
       result_ << ";\n";
    }
@@ -209,6 +232,7 @@ struct InfixStringizer {
 
 struct PrefixStringizer {
    ::std::ostringstream result_;
+
    void operator()(BinaryOperation const &op)
    {
       result_ << '(';
@@ -218,14 +242,17 @@ struct PrefixStringizer {
       ::std::visit(*this, *op.right_);
       result_ << ')';
    }
+
    void operator()(Identifier const &id)
    {
-      result_ << id.name_;
+      result_ << id.scope_->var_declarations_[id.varidx_];
    }
+
    void operator()(NumericLiteral const &nl)
    {
       result_ << nl.value_;
    }
+
    void operator()(StatementList const &sl)
    {
       result_ << "(progn\n";
@@ -236,12 +263,15 @@ struct PrefixStringizer {
       }
       result_ << ")";
    }
+
    void operator()(AssignmentStatement const &as)
    {
-      result_ << "(setq " << as.id_ << " ";
+      auto const &id = as.identifier_;
+      result_ << "(setq " << id.scope_->var_declarations_[id.varidx_] << " ";
       ::std::visit(*this, *as.expression_);
       result_ << ")";
    }
+
    void operator()(IfStatement const &ifs)
    {
       result_ << "(if (";
@@ -257,6 +287,7 @@ struct PrefixStringizer {
          result_ << "))\n";
       }
    }
+
    void operator()(WhileStatement const &whilestmt)
    {
       result_ << "(while (";
@@ -265,9 +296,11 @@ struct PrefixStringizer {
       ::std::visit(*this, *whilestmt.repeated_);
       result_ << "))\n";
    }
+
    void operator()(VarDecl const &vd)
    {
-      result_ << "var " << vd.id_ << " = ";
+      auto const &id = vd.identifier_;
+      result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
       ::std::visit(*this, *vd.expression_);
       result_ << ";\n";
    }
@@ -307,7 +340,7 @@ struct PrefixStringizer {
 
 namespace priv_ {
 class parse_context {
- public:
+public:
    ::std::vector<StatementList *> block_stack_;
 };
 
@@ -317,14 +350,17 @@ class scope_frame {
    {
       ctx_.block_stack_.push_back(block);
    }
+
    scope_frame(const scope_frame &) = delete;
    scope_frame &operator=(const scope_frame &) = delete;
    scope_frame(scope_frame &&) = delete;
    scope_frame &operator=(scope_frame &&) = delete;
+
    ~scope_frame()
    {
       pop_now();
    }
+
    void pop_now()
    {
       if (!popped_) {
@@ -356,8 +392,7 @@ parse_result_t parse_sequence(
 )
 {
    auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
-   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node));
-   {
+   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node)); {
       auto &statements = ::std::get<StatementList>(*statements_node);
 
       while (start != finish) {
@@ -551,9 +586,23 @@ parse_result_t parse_vardecl(
    ) {
       return parse_result_t{nullptr, finish};
    }
-   return {
+
+   assert(!ctx.block_stack_.empty());
+   auto &blockdecls = ctx.block_stack_.back()->var_declarations_;
+   auto const declpos =
+      ::std::find(blockdecls.begin(), blockdecls.end(), idtok.value_);
+   if (declpos != blockdecls.end()) {
+      ::std::cerr << "Redeclaration of variable " << idtok.value_ << "!\n";
+      return parse_result_t{nullptr, finish};
+   }
+   auto const varidx = blockdecls.size();
+   blockdecls.emplace_back(idtok.value_);
+   return parse_result_t{
       ::std::make_unique<ASTNode>(
-         VarDecl{idtok, ::std::move(expr)}
+         VarDecl{
+            Identifier{ctx.block_stack_.back(), varidx},
+            ::std::move(expr)
+         }
       ),
       ::std::next(remainder)
    };
@@ -565,42 +614,45 @@ parse_result_t parse_assignment(
    parse_context &ctx
 )
 {
-   if (auto const id = ::std::get_if<Tokens::Identifier>(&(*start))) {
-      auto const &idtok = *id;
-      auto const after_id = ::std::next(start);
-      if (after_id != finish) {
-         if (
-            ::std::holds_alternative<Tokens::Operator>(*after_id) &&
-            ::std::get<Tokens::Operator>(*after_id).value_ == Tokens::Operator::Equal
-         ) {
-            auto const after_eq = ::std::next(after_id);
-            if (after_eq != finish) {
-               auto [expr, remainder] =
-                  parse_expression(after_eq, finish, ctx);
-               if (expr) {
-                  if (
-                     remainder != finish &&
-                     ::std::holds_alternative<Tokens::Semicolon>(*remainder)
-                  ) {
-                     return {
-                        ::std::make_unique<ASTNode>(
-                           AssignmentStatement{idtok, ::std::move(expr)}
-                        ),
-                        ::std::next(remainder)
-                     };
-                  } else {
-                     ::std::cerr << "Didn't find semicolon after assignment, "
-                                    "aborting!\n";
-                  }
-               } else {
-                  ::std::cerr << "Didn't find expression after = in "
-                                  "assignment, aborting!\n";
-               }
-            }
-         }
-      }
+   auto [id, after_id] = parse_identifier(start, finish, ctx);
+   if (!id) {
+      return {nullptr, finish};
    }
-   return parse_result_t{nullptr, finish};
+   if (after_id == finish) {
+      return {nullptr, finish};
+   }
+   if (
+      !(::std::holds_alternative<Tokens::Operator>(*after_id) &&
+        ::std::get<Tokens::Operator>(*after_id).value_ == Tokens::Operator::Equal)
+   ) {
+      return {nullptr, finish};
+   }
+   auto const after_eq = ::std::next(after_id);
+   if (after_eq == finish) {
+      return {nullptr, finish};
+   }
+   auto [expr, remainder] =
+         parse_expression(after_eq, finish, ctx);
+   if (!expr) {
+      ::std::cerr << "Didn't find expression after = in "
+            "assignment, aborting!\n";
+      return {nullptr, finish};
+   }
+   if (
+      remainder == finish ||
+      !::std::holds_alternative<Tokens::Semicolon>(*remainder)
+   ) {
+      ::std::cerr << "Didn't find semicolon after assignment, "
+            "aborting!\n";
+      return {nullptr, finish};
+   }
+   assert(::std::holds_alternative<Identifier>(*id));
+   return {
+      ::std::make_unique<ASTNode>(
+         AssignmentStatement{::std::get<Identifier>(*id), ::std::move(expr)}
+      ),
+      ::std::next(remainder)
+   };
 }
 
 parse_result_t parse_ifelse(
@@ -768,7 +820,7 @@ parse_result_t parse_expression(
       auto const op = operators.front();
       operators.pop_front();
       top = ::std::make_unique<ASTNode>(BinaryOperation{
-            op.value_, ::std::move(top), ::std::move(boolterms.front())
+         op.value_, ::std::move(top), ::std::move(boolterms.front())
       });
       boolterms.pop_front();
    }
@@ -935,13 +987,11 @@ parse_result_t parse_factor(
    if (start == finish) {
       return {nullptr, finish};
    }
+   if (auto idresult = parse_identifier(start, finish, ctx); idresult.first) {
+      return idresult;
+   }
    auto const &tok = *start;
-   if (auto const id = ::std::get_if<Tokens::Identifier>(&tok)) {
-      return {
-         ::std::make_unique<ASTNode>(Identifier{*id}),
-         ::std::next(start)
-      };
-   } else if (auto const num = ::std::get_if<Tokens::UnsignedInteger>(&tok)) {
+   if (auto const num = ::std::get_if<Tokens::UnsignedInteger>(&tok)) {
       return {
          ::std::make_unique<ASTNode>(NumericLiteral{num->value_}),
          ::std::next(start)
@@ -963,6 +1013,38 @@ parse_result_t parse_factor(
       ::std::cerr << "Expected closing paren, parse aborted.\n";
       return {nullptr, finish};
    }
+   return {nullptr, finish};
+}
+
+parse_result_t
+parse_identifier(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+)
+{
+   if (start == finish) {
+      return {nullptr, finish};
+   }
+   auto const id = ::std::get_if<Tokens::Identifier>(&*start);
+   if (!id) {
+      return {nullptr, finish};
+   }
+   for (auto slist_: ::std::ranges::reverse_view{ctx.block_stack_}) {
+      auto &vdecls = slist_->var_declarations_;
+      auto idloc = ::std::find(vdecls.begin(), vdecls.end(), id->value_);
+      if (idloc != vdecls.end()) {
+         auto const ididx = ::std::distance(vdecls.begin(), idloc);
+         assert(ididx >= 0);
+         return {
+            ::std::make_unique<ASTNode>(
+               Identifier{slist_, static_cast<StatementList::varidx_t>(ididx)}
+            ),
+            ::std::next(start)
+         };
+      }
+   }
+   ::std::cerr << "Identifier " << id->value_ << " not found!\n";
    return {nullptr, finish};
 }
 

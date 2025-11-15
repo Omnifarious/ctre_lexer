@@ -121,6 +121,13 @@ parse_factor(
    priv_::parse_context &context
 );
 
+parse_result_t
+parse_identifier(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+
 class BinaryOperation {
 public:
    using OpType = decltype(::std::declval<Tokens::Operator>().value_);
@@ -130,15 +137,6 @@ public:
    OpType op_;
    astptr_t left_;
    astptr_t right_;
-};
-
-class Identifier {
-public:
-   explicit Identifier(Tokens::Identifier const &idtok) :
-       name_(idtok.value_)
-   {}
-
-   ::std::string name_;
 };
 
 class NumericLiteral {
@@ -154,17 +152,27 @@ public:
    StatementList() = default;
 
    ::std::vector<astptr_t> statements_;
-   ::std::unique_ptr<::std::unordered_set<std::string>> identifiers_;
+   ::std::vector<::std::string> var_declarations_;
+
+   using varidx_t = decltype(var_declarations_)::size_type;
+};
+
+class Identifier {
+public:
+   explicit Identifier(StatementList *scope, StatementList::varidx_t varidx)
+        : scope_(scope), varidx_(varidx)
+   {}
+
+   StatementList *scope_;
+   StatementList::varidx_t varidx_;
 };
 
 class AssignmentStatement {
 public:
    // Can't define this here because we don't know what an ASTNode is yet.
-   inline AssignmentStatement(
-      Tokens::Identifier const &id, astptr_t expression
-   );
+   inline AssignmentStatement(Identifier id, astptr_t expression);
 
-   ::std::string id_;
+   Identifier identifier_;
    astptr_t expression_;
 };
 
@@ -172,10 +180,10 @@ class VarDecl {
 public:
    // Can't define this here because we don't know what an ASTNode is yet.
    inline VarDecl(
-      Tokens::Identifier const &id, astptr_t expression
+      Identifier id, astptr_t expression
    );
 
-   ::std::string id_;
+   Identifier identifier_;
    astptr_t expression_;
 };
 
@@ -220,13 +228,13 @@ inline BinaryOperation::BinaryOperation(OpType op, astptr_t left, astptr_t right
 {
 }
 
-inline VarDecl::VarDecl(Tokens::Identifier const &id, astptr_t expression)
-   : id_(id.value_), expression_(::std::move(expression))
+inline VarDecl::VarDecl(Identifier id, astptr_t expression)
+   : identifier_(::std::move(id)), expression_(::std::move(expression))
 {
 }
 
-inline AssignmentStatement::AssignmentStatement(Tokens::Identifier const &id, astptr_t expression)
-   : id_(id.value_), expression_(::std::move(expression))
+inline AssignmentStatement::AssignmentStatement(Identifier id, astptr_t expression)
+   : identifier_(::std::move(id)), expression_(::std::move(expression))
 {
 }
 
