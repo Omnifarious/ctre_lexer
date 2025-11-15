@@ -70,17 +70,9 @@ void SimpleEvaluator::operator()(BinaryOperation const &op)
 
 void SimpleEvaluator::operator()(Identifier const &id)
 {
-   // TODO Update this to work properly.
    current_result_ = 0U;
-#if 0
-   auto &current_frame = stack_.back();
-   auto const it = current_frame.find(id.name_);
-   if (it == current_frame.end()) {
-      current_result_ = 0;
-   } else {
-      current_result_ = it->second;
-   }
-#endif
+   auto lvalue = find_identifier(id);
+   current_result_ = lvalue.first->var_values_[lvalue.second];
 }
 
 void SimpleEvaluator::operator()(NumericLiteral const &nl)
@@ -91,16 +83,11 @@ void SimpleEvaluator::operator()(NumericLiteral const &nl)
 void SimpleEvaluator::operator()(StatementList const &sl)
 {
    current_result_ = 0U;
-   // TODO fix this
-#if 0
-   if (sl.var_declarations_) {
-      auto const &identifiers = *sl.identifiers_;
-      stackframe_t frame;
-      frame.reserve(identifiers.size());
-      for (auto const &id: identifiers) {
-         frame[id] = 0;
-      }
-      stack_.push_back(::std::move(frame));
+   if (!sl.var_declarations_.empty()) {
+      stack_.emplace_back(
+         &sl,
+         ::std::vector<::std::uintmax_t>{sl.var_declarations_.size(), 0U}
+      );
    }
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
@@ -108,19 +95,17 @@ void SimpleEvaluator::operator()(StatementList const &sl)
          statement_function_(current_result_);
       }
    }
-   if (sl.identifiers_) {
+   if (!sl.var_declarations_.empty()) {
+      assert(!stack_.empty());
       stack_.pop_back();
    }
-#endif
 }
 
 void SimpleEvaluator::operator()(AssignmentStatement const &as)
 {
-   // TODO fix this
-#if 0
+   auto lvalue = find_identifier(as.identifier_);
    ::std::visit(*this, *as.expression_);
-   stack_.back()[as.id_] = current_result_;
-#endif
+   lvalue.first->var_values_[lvalue.second] = current_result_;
    current_result_ = 0;
 }
 
@@ -148,13 +133,24 @@ void SimpleEvaluator::operator()(WhileStatement const &whilestmt)
 
 void SimpleEvaluator::operator()(VarDecl const &vd)
 {
-   // TODO fix this
-#if 0
+   auto lvalue = find_identifier(vd.identifier_);
    ::std::visit(*this, *vd.expression_);
-   auto &current_frame = stack_.back();
-   current_frame[vd.identifier_] = current_result_;
-#endif
+   lvalue.first->var_values_[lvalue.second] = current_result_;
    current_result_ = 0;
+}
+
+std::pair<SimpleEvaluator::stackframe_t *, StatementList::varidx_t>
+SimpleEvaluator::find_identifier(Identifier const &id)
+{
+   auto const rend = stack_.rend();
+   auto const frame = ::std::find_if(
+      stack_.rbegin(), rend,
+      [&](auto const &sf) {
+         return sf.context_ == id.scope_;
+      }
+   );
+   assert(frame != rend && "Identifier context not found in any stack frame");
+   return {&(*frame), id.varidx_};
 }
 
 struct InfixStringizer {

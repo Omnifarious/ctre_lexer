@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 #include <functional>
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 #include "tokens.hpp"
@@ -179,9 +180,7 @@ public:
 class VarDecl {
 public:
    // Can't define this here because we don't know what an ASTNode is yet.
-   inline VarDecl(
-      Identifier id, astptr_t expression
-   );
+   inline VarDecl(Identifier id, astptr_t expression);
 
    Identifier identifier_;
    astptr_t expression_;
@@ -259,10 +258,10 @@ inline WhileStatement::WhileStatement(astptr_t condition, astptr_t repeated)
 
 class SimpleEvaluator {
  public:
-   SimpleEvaluator() { init_stack(*this); }
+   SimpleEvaluator() = default;
    explicit SimpleEvaluator(::std::function<void(uintmax_t statement_result)> f)
       : statement_function_(::std::move(f))
-   { init_stack(*this); }
+   { }
    void operator()(BinaryOperation const &op);
    void operator()(Identifier const &id);
    void operator()(NumericLiteral const &lit);
@@ -274,15 +273,22 @@ class SimpleEvaluator {
    void operator()(ASTNode const &node);
 
    ::std::uintmax_t current_result_ = 0;
-   ::std::function<void(uintmax_t statement_result)> statement_function_;
-   using stackframe_t = ::std::unordered_map<std::string, ::std::uintmax_t>;
-   ::std::vector<stackframe_t> stack_;
 
  private:
-   static void init_stack(SimpleEvaluator &evaluator) {
-      // Create global frame.
-      evaluator.stack_.push_back(stackframe_t{});
-   }
+   ::std::function<void(uintmax_t statement_result)> statement_function_;
+   struct stackframe_t {
+      stackframe_t(
+         StatementList const *ctx,
+         ::std::vector<::std::uintmax_t> values
+      ) : context_(ctx), var_values_(::std::move(values))
+      {}
+      StatementList const *context_ = nullptr;
+      ::std::vector<::std::uintmax_t> var_values_;
+   };
+   ::std::vector<stackframe_t> stack_;
+
+   ::std::pair<stackframe_t *, StatementList::varidx_t>
+   find_identifier(Identifier const &id);
 };
 
 } // namespace Parser
