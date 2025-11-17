@@ -14,7 +14,7 @@ SCENARIO("While loops and evaluator callback behavior")
 
     GIVEN("A simple while loop that decrements to zero")
     {
-        std::string input = "x = 3; y = 0; while (x) { x = x - 1; y = y + 1; } y;";
+        std::string input = "var x = 3; var y = 0; while (x) { x = x - 1; y = y + 1; } y;";
         auto tokens = tokenize_input(input.begin(), input.end());
         WHEN("The tokens are parsed")
         {
@@ -27,8 +27,8 @@ SCENARIO("While loops and evaluator callback behavior")
                 CHECK(result->evaluate() == 3);
                 // Infix stringization of the whole sequence
                 CHECK(result->to_infix_string() ==
-                      "x = 3;\n"
-                      "y = 0;\n"
+                      "var x = 3;\n"
+                      "var y = 0;\n"
                       "while (x) {\n"
                       "x = (x - 1);\n"
                       "y = (y + 1);\n"
@@ -39,8 +39,8 @@ SCENARIO("While loops and evaluator callback behavior")
                 // Prefix stringization of the whole sequence
                 CHECK(result->to_prefix_string() ==
                       "(progn\n"
-                      "    (setq x 3)\n"
-                      "    (setq y 0)\n"
+                      "    (setq-new x 3)\n"
+                      "    (setq-new y 0)\n"
                       "    (while (x) (progn\n"
                       "(progn\n"
                       "    (setq x (- x 1))\n"
@@ -55,7 +55,7 @@ SCENARIO("While loops and evaluator callback behavior")
 
     GIVEN("A while loop with initially false condition")
     {
-        std::string input = "x = 0; while (x) x = 1; x;";
+        std::string input = "var x = 0; while (x) x = 1; x;";
         auto tokens = tokenize_input(input.begin(), input.end());
         WHEN("The tokens are parsed")
         {
