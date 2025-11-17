@@ -387,7 +387,8 @@ parse_result_t parse_sequence(
 )
 {
    auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
-   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node)); {
+   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node));
+   {
       auto &statements = ::std::get<StatementList>(*statements_node);
 
       while (start != finish) {
