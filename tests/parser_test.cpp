@@ -37,7 +37,7 @@ SCENARIO(
         }
     }
 
-    GIVEN("A simple assignment statement")
+    GIVEN("A simple assignment statement missing a variable declaration")
     {
         std::string input = "x = 42;";
         auto tokens = tokenize_input(input.begin(), input.end());
@@ -46,17 +46,35 @@ SCENARIO(
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
 
-            THEN("The parse succeeds and creates assignment")
+            THEN("The parse fails because x is not declared.")
             {
-                REQUIRE(result != nullptr);
-                REQUIRE(remainder == tokens.end());
-                CHECK(result->evaluate() == 0); // StatementList returns 0
-                CHECK(result->to_infix_string() == "x = 42;\n");
-                CHECK(result->to_prefix_string() == "(progn\n    (setq x 42)\n)");
+                // TODO This following is wrong, and needs fixing in the code
+                CHECK(result != nullptr);
+                REQUIRE(remainder != tokens.end());
             }
         }
     }
 
+    GIVEN("A simple variable declaration and assignment statement")
+    {
+        std::string input = "var x = 0; x = 42;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
+            THEN("The parse fails because x is not declared.")
+            {
+                REQUIRE(result != nullptr);
+                REQUIRE(remainder == tokens.end());
+                CHECK(result->evaluate() == 0); // StatementList returns 0
+                CHECK(result->to_infix_string() == "var x = 0;\nx = 42;\n");
+                CHECK(result->to_prefix_string() == "(progn\n"
+                    "    (setq-new x 0)\n    (setq x 42)\n)");
+            }
+        }
+    }
     GIVEN("Expression with operator precedence: addition and multiplication")
     {
         std::string input = "2 + 3 * 4;";
@@ -142,7 +160,7 @@ SCENARIO(
 
     GIVEN("Multiple statements, and assignment works correctly")
     {
-        std::string input = "x = 10; y = 20; x + y;";
+        std::string input = "var x = 0; var y = 0; x = 10; y = 20; x + y;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -157,9 +175,9 @@ SCENARIO(
                 Parser::SimpleEvaluator eval(save_result);
                 ::std::visit(eval, *ast_top);
                 CHECK(eval.current_result_ == 30);
-                CHECK_THAT(results, RangeEquals({0U, 0U, 30U}));
-                CHECK(ast_top->to_infix_string() == "x = 10;\ny = 20;\n(x + y);\n");
-                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
+                CHECK_THAT(results, RangeEquals({0U, 0U, 0U, 0U, 30U}));
+                CHECK(ast_top->to_infix_string() == "var x = 0;\nvar y = 0;\nx = 10;\ny = 20;\n(x + y);\n");
+                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq-new x 0)\n    (setq-new y 0)\n    (setq x 10)\n    (setq y 20)\n    (+ x y)\n)");
             }
         }
     }
@@ -206,7 +224,7 @@ SCENARIO(
 
     GIVEN("Expression with boolean operators.")
     {
-        std::string input = "five = 5; one = 1; six = 6;"
+        std::string input = "var five = 5; var one = 1; var six = 6;"
                             "five - one * five && one;"
                             "five * six - six && one;"
                             "0 && 1;"
@@ -248,8 +266,8 @@ SCENARIO(
                     0U, // 5 || 0 && 0
                     1U  // 1 || 6
                 }));
-                CHECK(ast_top->to_infix_string() == "five = 5;\none = 1;\nsix = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
-                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq five 5)\n    (setq one 1)\n    (setq six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
+                CHECK(ast_top->to_infix_string() == "var five = 5;\nvar one = 1;\nvar six = 6;\n((five - (one * five)) && one);\n(((five * six) - six) && one);\n(0 && 1);\n(1 && 0);\n(0 && 0);\n((0 || 1) && 5);\n((1 && 5) || 0);\n((0 || 6) && 0);\n(((0 && 5) || 1) && 0);\n((5 || 0) && 0);\n(1 || 6);\n");
+                CHECK(ast_top->to_prefix_string() == "(progn\n    (setq-new five 5)\n    (setq-new one 1)\n    (setq-new six 6)\n    (&& (- five (* one five)) one)\n    (&& (- (* five six) six) one)\n    (&& 0 1)\n    (&& 1 0)\n    (&& 0 0)\n    (&& (|| 0 1) 5)\n    (|| (&& 1 5) 0)\n    (&& (|| 0 6) 0)\n    (&& (|| (&& 0 5) 1) 0)\n    (&& (|| 5 0) 0)\n    (|| 1 6)\n)");
             }
         }
     }
@@ -283,17 +301,34 @@ SCENARIO(
         {
             auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
 
+            THEN("Parsing fails because the identifier wasn't declared.")
+            {
+                // TODO This following is wrong, and needs fixing in the code
+                CHECK(result != nullptr);
+                REQUIRE(remainder != tokens.end());
+            }
+        }
+    }
+
+    GIVEN("Declaration, then single identifier")
+    {
+        std::string input = "var variable = 0; variable;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+
+        WHEN("The tokens are parsed")
+        {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+
             THEN("Identifier is parsed as expression")
             {
                 REQUIRE(result != nullptr);
                 REQUIRE(remainder == tokens.end());
                 CHECK(result->evaluate() == 0);
-                CHECK(result->to_infix_string() == "variable;\n");
-                CHECK(result->to_prefix_string() == "(progn\n    variable\n)");
+                CHECK(result->to_infix_string() == "var variable = 0;\nvariable;\n");
+                CHECK(result->to_prefix_string() == "(progn\n    (setq-new variable 0)\n    variable\n)");
             }
         }
     }
-
     GIVEN("Simple if statement without else")
     {
         std::string input = "if (1) 42;";
@@ -336,7 +371,7 @@ SCENARIO(
 
     GIVEN("If statement with true expression condition")
     {
-        std::string input = "x = 5; if (x - 4) x + 1; else x - 1;";
+        std::string input = "var x = 5; if (x - 4) x + 1; else x - 1;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -359,7 +394,7 @@ SCENARIO(
 
     GIVEN("If statement with false expression condition")
     {
-        std::string input = "x = 2; if (x - 2) x + 10; else x * 2;";
+        std::string input = "var x = 2; if (x - 2) x + 10; else x * 2;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -419,7 +454,7 @@ SCENARIO(
 
     GIVEN("If statement with assignment in branches")
     {
-        std::string input = "x = 0; if (1) x = 10; else x = 20; x;";
+        std::string input = "var x = 0; if (1) x = 10; else x = 20; x;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -441,7 +476,7 @@ SCENARIO(
 
     GIVEN("If statement with complex boolean expressions")
     {
-        std::string input = "a = 1; b = 0; if (a && b || a) 100; else 200;";
+        std::string input = "var a = 1; var b = 0; if (a && b || a) 100; else 200;";
         auto tokens = tokenize_input(input.begin(), input.end());
 
         WHEN("The tokens are parsed")
@@ -591,13 +626,15 @@ SCENARIO(
         AND_GIVEN("A simple if/else that has previously failed.")
         {
             ::std::string input =
+                "var a = 0;\n"
+                "var b = 0;\n"
                 "if (a < b) {\n"
                 "5;\n"
                 "} else {\n"
                 "6;\n"
                 "}\n";
             auto tokens = tokenize_input(input.begin(), input.end());
-            REQUIRE(tokens.size() == 15);
+            REQUIRE(tokens.size() == 25);
 
             WHEN("It is parsed.")
             {

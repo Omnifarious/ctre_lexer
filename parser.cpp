@@ -221,7 +221,6 @@ struct InfixStringizer {
       auto const &id = vd.identifier_;
       result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
       ::std::visit(*this, *vd.expression_);
-      result_ << ";\n";
    }
 };
 
@@ -295,9 +294,9 @@ struct PrefixStringizer {
    void operator()(VarDecl const &vd)
    {
       auto const &id = vd.identifier_;
-      result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
+      result_ << "(setq-new " << id.scope_->var_declarations_[id.varidx_] << ' ';
       ::std::visit(*this, *vd.expression_);
-      result_ << ";\n";
+      result_ << ")";
    }
 };
 
