@@ -1,0 +1,24 @@
+#!/bin/bash
+exec 1>&2
+# Force a character encoding for grep and wc
+export LC_ALL=en_US.UTF-8
+if hg log -r "$HG_NODE" --template '{desc}' | tail -1 | grep -Ee "^OVERRIDE HOOK$" >/dev/null; then
+    exit 0
+fi
+first_length=$(hg log -r "$HG_NODE" --template '{desc}' | head -1 | wc -m)
+if [ $first_length -gt 67 ]; then
+    echo "First line of commit message too long ($first_length > 67)."
+    exit 1
+fi
+total_lines=$(hg log -r "$HG_NODE" --template '{desc}' | wc -l)
+# 0 lines means no newline at all, which means just a summary.
+if [ $total_lines -gt 0 ]; then
+    if ! hg log -r "$HG_NODE" --template '{desc}' | head -1 | grep -Ee '\.\.\.$' >/dev/null; then
+        echo "If more than one line, summary must end in '...'"
+        exit 1
+    fi
+    if hg log -r "$HG_NODE" --template '{desc}' | grep -Ee '^.{81}'; then
+        echo "The above lines are more than 80 characters long, please fix."
+        exit 1
+    fi
+fi
