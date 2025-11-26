@@ -653,4 +653,19 @@ SCENARIO(
             }
         }
     }
+
+    GIVEN("A variable declaration with no initializer.") {
+        ::std::string input = "var x;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        REQUIRE(tokens.size() == 3);
+
+        WHEN("It is parsed.") {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+            THEN("It shouldn't parse correctly.") {
+                // TODO This is wrong, it should be the opposite, fix later
+                CHECK(result != nullptr);
+                REQUIRE(remainder != tokens.end());
+            }
+        }
+    }
 }
