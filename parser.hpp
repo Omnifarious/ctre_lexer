@@ -33,7 +33,8 @@ namespace Parser {
 // boolterm = relclause | boolterm ( "<" | ">" | "<=" | ">=" | "=" | "!=" ) relclause
 // relclause = term | relclause ( "+" | "-" ) term
 // term = factor | term ( "*" | "/" ) factor
-// factor = IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
+// function_call = IDENTIFIER "(" [ expr_list ] ")"
+// factor = function_call | IDENTIFIER | NUMERIC_LITERAL | "(" expression ")"
 
 class ASTNode;
 using astptr_t = ::std::unique_ptr<ASTNode>;
