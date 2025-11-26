@@ -75,6 +75,7 @@ SCENARIO(
             }
         }
     }
+
     GIVEN("Expression with operator precedence: addition and multiplication")
     {
         std::string input = "2 + 3 * 4;";
@@ -329,6 +330,7 @@ SCENARIO(
             }
         }
     }
+
     GIVEN("Simple if statement without else")
     {
         std::string input = "if (1) 42;";
