@@ -23,10 +23,12 @@ namespace Parser {
 // statement = if_statement | while_statement | assignment |
 //             expression_statement | "{" sequence "}"
 // var_declaration = VAR IDENTIFIER "=" expression ";"
+// func_declaration = DEF IDENTIFIER "(" [ expr_list ] ")" "{" sequence "}"
 // if_statement = IF "(" expression ")" statement [ ELSE statement ]
 // while_statement = WHILE "(" expression ")" statement
 // assignment = identifier "=" expression ";"
 // expression_statement = expression ";"
+// expr_list = expression | expression "," expr_list
 // expression = expression | expression ( "&&" | "||" ) boolterm
 // boolterm = relclause | boolterm ( "<" | ">" | "<=" | ">=" | "=" | "!=" ) relclause
 // relclause = term | relclause ( "+" | "-" ) term
