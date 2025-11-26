@@ -59,7 +59,8 @@ int main()
       [](Tokens::Keyword const &t) {
          using namespace ::std::literals::string_view_literals;
          using sv = ::std::string_view;
-         auto constexpr keyword_names = ::std::array{"If"sv, "Else"sv, "While"sv, "Var"sv};
+         auto constexpr keyword_names =
+            ::std::array{"If"sv, "Else"sv, "While"sv, "Var"sv, "Def"sv};
          ::std::cout << format("keyword: \"{}\" -> {}\n", t.orig_text_, keyword_names[t.value_]);
       },
       [](Tokens::Semicolon const &t) {

@@ -255,6 +255,54 @@ SCENARIO("Fixed string generates expected list of tokens.")
         }
     }
 
+    GIVEN("A simple function declaration using the 'def' keyword and comma punctuator")
+    {
+        // This also validates that ',' is recognized as a punctuator token
+        std::string input = "def sum(a, b);";
+        namespace t = Tokens;
+        const t::toklist_t expected_tokens{
+            t::Keyword{"def", t::Keyword::Def},
+            t::Identifier{"sum", "sum"},
+            t::Paren{"(", t::Paren::Open},
+            t::Identifier{"a", "a"},
+            t::Punctuator{",", t::Punctuator::Comma},
+            t::Identifier{"b", "b"},
+            t::Paren{")", t::Paren::Close},
+            t::Semicolon{}
+        };
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("The 'def' keyword and comma punctuator are correctly tokenized")
+            {
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
+            }
+        }
+    }
+
+    GIVEN("Identifiers like 'define' should not be mistaken for the 'def' keyword")
+    {
+        std::string input = "define x;";
+        namespace t = Tokens;
+        const t::toklist_t expected_tokens{
+            t::Identifier{"define", "define"},
+            t::Identifier{"x", "x"},
+            t::Semicolon{}
+        };
+
+        WHEN("The string is tokenized")
+        {
+            auto tokens = tokenize_input(input.begin(), input.end());
+
+            THEN("'define' is tokenized as an identifier, not the 'def' keyword")
+            {
+                REQUIRE_THAT(tokens, Catch::Matchers::Equals(expected_tokens));
+            }
+        }
+    }
+
     GIVEN("A string with keywords that should not be confused with identifiers")
     {
         std::string input = "ifx = 1; elsif = 2; if_var = 3;";

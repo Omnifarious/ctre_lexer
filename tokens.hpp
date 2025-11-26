@@ -19,8 +19,9 @@ static constexpr auto lex_patterns = ctll::fixed_string{
    "(?<int_hex>0x[0-9a-fA-F]+)|"
    "(?<int_oct>0[0-7]*[1-7][0-7]*)|"
    "(?<int_dec>(?:[1-9][0-9]*)|0)|"
-   "(?:(?<keyword>(?:if|else|while|var))(?!\\w))|"
+   "(?:(?<keyword>(?:if|else|while|var|def))(?!\\w))|"
    "(?<identifier>\\w(?:\\w|\\d)*)|"
+   "(?<punctuator>,)|"
    "(?<operator><=|>=|!=|&&|\\|\\||[+*/=<>]|-)|"
    "(?<paren>[()])|"
    "(?<semicolon>;)|"
@@ -52,6 +53,10 @@ struct Operator : Base {
    } value_;
 };
 
+struct Punctuator : Base {
+   enum { Comma } value_;
+};
+
 struct Paren : Base {
    enum { Open, Close } value_;
 };
@@ -61,13 +66,13 @@ struct CurlyBracket : Base {
 };
 
 struct Keyword : Base {
-   enum { If, Else, While, Var } value_;
+   enum { If, Else, While, Var, Def } value_;
 };
 
 struct Semicolon : Base {};
 
 using AnyToken = ::std::variant<
-   UnsignedInteger, Identifier,
+   UnsignedInteger, Identifier, Punctuator,
    Operator, Paren, Semicolon, CurlyBracket,
    Keyword
 >;
@@ -125,6 +130,8 @@ toklist_t tokenize_input(I begin, I end)
             tokens.emplace_back(UnsignedInteger{num, stoull(num, nullptr, 8)});
          } else if (auto const &id = match.template get<"identifier">()) {
             tokens.emplace_back(Identifier{id.to_string(), id.to_string()});
+         } else if (auto const &comma = match.template get<"punctuator">()) {
+            tokens.emplace_back(Punctuator{comma.to_string(), Punctuator::Comma});
          } else if (auto const &op = match.template get<"operator">()) {
             switch (op.to_string()[0]) {
                case '+':
@@ -211,6 +218,8 @@ toklist_t tokenize_input(I begin, I end)
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::While});
             } else if (keyword.to_string() == "var") {
                tokens.emplace_back(Keyword{keyword.to_string(), Keyword::Var});
+            } else if (keyword.to_string() == "def") {
+               tokens.emplace_back(Keyword{keyword.to_string(), Keyword::Def});
             } else {
                assert(!"Unexpected keyword");
             }
