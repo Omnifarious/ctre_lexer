@@ -668,4 +668,75 @@ SCENARIO(
             }
         }
     }
+
+    GIVEN("A global variable and the variable assigned in a local scope") {
+        ::std::string input = "var x = 10; { x = 20; } x;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        REQUIRE(tokens.size() == 13);
+
+        WHEN("It is parsed and run.") {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+            REQUIRE(result != nullptr);
+            REQUIRE(remainder == tokens.end());
+            THEN("Its value should change.") {
+                Parser::SimpleEvaluator eval;
+                ::std::visit(eval, *result);
+                CHECK(eval.current_result_ == 20);
+            }
+        }
+    }
+
+    GIVEN("A global variable shadowed by a local variable.") {
+        ::std::string input = "var x = 10; { var x = 20; x; } x;";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        REQUIRE(tokens.size() == 16);
+
+        WHEN("It is parsed and run.") {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+            REQUIRE(result != nullptr);
+            //CHECK(result->to_prefix_string() == "bad value\n");
+            REQUIRE(remainder == tokens.end());
+            THEN("The local variable should be used.") {
+                using Catch::Matchers::RangeEquals;
+                Parser::SimpleEvaluator eval{save_result};
+                ::std::visit(eval, *result);
+                CHECK_THAT(results, RangeEquals({
+                    0U,  // var x = 10
+                    0U,  // var x = 20
+                    20U, // x
+                    20U, // braced statement
+                    10U  // final x
+                }));
+            }
+        }
+    }
+
+    GIVEN("A loop with a variable declaration.") {
+        ::std::string input =
+            "var count = 3;\n"
+            "while (count > 0) {\n"
+            "    var x = 10 - count;\n"
+            "    count = count - 1;\n"
+            "    x;\n"
+            "}\n";
+        auto tokens = tokenize_input(input.begin(), input.end());
+        REQUIRE(tokens.size() == 28);
+        WHEN("It is parsed and run.") {
+            auto [result, remainder] = parse_top(tokens.begin(), tokens.end());
+            REQUIRE(result != nullptr);
+            REQUIRE(remainder == tokens.end());
+            THEN("The sequence of values produced by statements should be correct.") {
+                using Catch::Matchers::RangeEquals;
+                Parser::SimpleEvaluator eval{save_result};
+                ::std::visit(eval, *result);
+                CHECK_THAT(results, RangeEquals({
+                    0U, // var count = 3
+                    0U, 0U, 7U,  // body of while loop
+                    0U, 0U, 8U,  // body of while loop
+                    0U, 0U, 9U,  // body of while loop
+                    0U // while loop result
+                }));
+            }
+        }
+    }
 }
