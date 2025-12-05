@@ -139,6 +139,14 @@ void SimpleEvaluator::operator()(VarDecl const &vd)
    current_result_ = 0;
 }
 
+void SimpleEvaluator::operator ()(FuncDeclaration const &fdecl) {
+   return;  // TODO do _something_ rather than nothing.
+}
+
+void SimpleEvaluator::operator()(FuncCall const &fcall) {
+   return;  // TODO do _something_ rather than nothing.
+}
+
 std::pair<SimpleEvaluator::stackframe_t *, StatementList::varidx_t>
 SimpleEvaluator::find_identifier(Identifier const &id)
 {
@@ -222,6 +230,13 @@ struct InfixStringizer {
       result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
       ::std::visit(*this, *vd.expression_);
    }
+
+   void operator ()(FuncDeclaration const &fdecl) {
+      return;  // TODO do _something_ rather than nothing.
+   }
+   void operator()(FuncCall const &fcall) {
+      return;  // TODO do _something_ rather than nothing.
+   }
 };
 
 struct PrefixStringizer {
@@ -297,6 +312,42 @@ struct PrefixStringizer {
       result_ << "(setq-new " << id.scope_->var_declarations_[id.varidx_] << ' ';
       ::std::visit(*this, *vd.expression_);
       result_ << ")";
+   }
+
+   void operator()(FuncDeclaration const &fdecl) {
+      auto const &id = fdecl.name_;
+      result_ << "(defun ";
+      (*this)(fdecl.name_);
+      result_ << " (";
+      auto const *slist = get_if<StatementList>(fdecl.body_.get());
+      assert(slist && "Function somehow missing a body!");
+      assert(
+         slist->var_declarations_.size() >= fdecl.num_args_ &&
+         "Function body has fewer parameters than declared!"
+      );
+      for (
+         StatementList::varidx_t paramidx = 0;
+         paramidx < fdecl.num_args_;
+         ++paramidx
+      ) {
+         if (paramidx != 0) {
+            result_ << " ";
+         }
+         result_ << slist->var_declarations_[paramidx];
+      }
+      result_ << ")\n";
+      ::std::visit(*this, *fdecl.body_);
+      result_ << ")";
+   }
+
+   void operator()(FuncCall const &fcall) {
+      result_ << "(";
+      (*this)(fcall.func_);
+      for (auto const &arg : fcall.param_exprs_) {
+         result_ << " ";
+         ::std::visit(*this, *arg);
+      }
+      result_ << ")\n";
    }
 };
 
@@ -601,6 +652,22 @@ parse_result_t parse_vardecl(
       ),
       ::std::next(remainder)
    };
+}
+
+parse_result_t parse_func_declaration(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &context)
+{
+   return parse_result_t{nullptr, finish};
+}
+
+parse_result_t parse_func_call(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &context)
+{
+   return parse_result_t{nullptr, finish};
 }
 
 parse_result_t parse_assignment(

@@ -84,6 +84,18 @@ parse_vardecl(
    priv_::parse_context &context
 );
 parse_result_t
+parse_func_declaration(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+parse_result_t
+parse_func_call(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &context
+);
+parse_result_t
 parse_ifelse(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
@@ -172,6 +184,19 @@ public:
    StatementList::varidx_t varidx_;
 };
 
+class FuncDeclaration {
+public:
+   Identifier name_;
+   astptr_t body_;
+   StatementList::varidx_t num_args_;
+};
+
+class FuncCall {
+public:
+   Identifier func_;
+   ::std::vector<astptr_t> param_exprs_;
+};
+
 class AssignmentStatement {
 public:
    // Can't define this here because we don't know what an ASTNode is yet.
@@ -213,7 +238,7 @@ class WhileStatement {
 using allnodes_t = ::std::variant<
    BinaryOperation, Identifier, NumericLiteral,
    StatementList, AssignmentStatement, IfStatement, WhileStatement,
-   VarDecl
+   VarDecl, FuncDeclaration, FuncCall
 >;
 
 class ASTNode : public allnodes_t {
@@ -275,6 +300,8 @@ class SimpleEvaluator {
    void operator()(WhileStatement const &whilestmt);
    void operator()(VarDecl const &vd);
    void operator()(ASTNode const &node);
+   void operator()(FuncDeclaration const &fdecl);
+   void operator()(FuncCall const &fcall);
 
    ::std::uintmax_t current_result_ = 0;
 
