@@ -387,6 +387,20 @@ namespace priv_ {
 class parse_context {
 public:
    ::std::vector<StatementList *> block_stack_;
+
+   ::std::optional<StatementList::varidx_t>
+   declare_var(Tokens::Identifier const &id) const {
+      auto * const curscope = block_stack_.back();
+      auto &scopedecls = curscope->var_declarations_;
+      auto const declpos =
+         ::std::find(scopedecls.begin(), scopedecls.end(), id.value_);
+      if (declpos != scopedecls.end()) {
+         ::std::cerr << "Redeclaration of variable " << id.value_ << "!\n";
+         return {};
+      }
+      scopedecls.emplace_back(id.value_);
+      return {scopedecls.size() - 1};
+   }
 };
 
 class scope_frame {
@@ -427,31 +441,38 @@ using namespace priv_;
 parse_result_t parse_top(Tokens::toklist_t::iterator start, Tokens::toklist_t::iterator finish)
 {
    parse_context ctx;
-   return parse_sequence(start, finish, ctx);
+   return parse_new_scope(start, finish, ctx);
+}
+
+parse_result_t parse_new_scope(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   parse_context &ctx
+) {
+   auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
+   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node));
+   return parse_sequence(start, finish, ctx, ::std::move(statements_node));
 }
 
 parse_result_t parse_sequence(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
-   parse_context &ctx
+   parse_context &ctx,
+   astptr_t slist_node
 )
 {
-   auto statements_node = ::std::make_unique<ASTNode>(StatementList{});
-   scope_frame frame(ctx, &::std::get<StatementList>(*statements_node));
-   {
-      auto &statements = ::std::get<StatementList>(*statements_node);
+   auto &statements = ::std::get<StatementList>(*slist_node);
 
-      while (start != finish) {
-         auto [statement, remainder] = parse_statement(start, finish, ctx);
+   while (start != finish) {
+      auto [statement, remainder] = parse_statement(start, finish, ctx);
 
-         if (!statement) {
-            break;
-         }
-         start = remainder;
-         statements.statements_.emplace_back(::std::move(statement));
+      if (!statement) {
+         break;
       }
+      start = remainder;
+      statements.statements_.emplace_back(::std::move(statement));
    }
-   return parse_result_t{::std::move(statements_node), start};
+   return parse_result_t{::std::move(slist_node), start};
 }
 
 parse_result_t parse_statement(
@@ -473,7 +494,7 @@ parse_result_t parse_statement(
       tok && tok->value_ == Tokens::CurlyBracket::Open
    ) {
       start = ::std::next(start);
-      auto [stmt, remainder] = parse_sequence(start, finish, ctx);
+      auto [stmt, remainder] = parse_new_scope(start, finish, ctx);
       if (!stmt) {
          ::std::cerr << "Didn't find proper statement sequence after {";
          return parse_result_t{nullptr, finish};
@@ -634,19 +655,15 @@ parse_result_t parse_vardecl(
    }
 
    assert(!ctx.block_stack_.empty());
-   auto &blockdecls = ctx.block_stack_.back()->var_declarations_;
-   auto const declpos =
-      ::std::find(blockdecls.begin(), blockdecls.end(), idtok.value_);
-   if (declpos != blockdecls.end()) {
-      ::std::cerr << "Redeclaration of variable " << idtok.value_ << "!\n";
+   // Failure means variable was already declared.
+   auto const varidx = ctx.declare_var(idtok);
+   if (!varidx.has_value()) {
       return parse_result_t{nullptr, finish};
    }
-   auto const varidx = blockdecls.size();
-   blockdecls.emplace_back(idtok.value_);
    return parse_result_t{
       ::std::make_unique<ASTNode>(
          VarDecl{
-            Identifier{ctx.block_stack_.back(), varidx},
+            Identifier{ctx.block_stack_.back(), varidx.value()},
             ::std::move(expr)
          }
       ),

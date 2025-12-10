@@ -52,11 +52,18 @@ parse_top(
    Tokens::toklist_t::iterator finish
 );
 
+parse_result_t parse_new_scope(
+   Tokens::toklist_t::iterator start,
+   Tokens::toklist_t::iterator finish,
+   priv_::parse_context &ctx
+);
+
 parse_result_t
 parse_sequence(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
-   priv_::parse_context &context
+   priv_::parse_context &context,
+   astptr_t slist_node
 );
 
 parse_result_t
