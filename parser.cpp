@@ -674,9 +674,125 @@ parse_result_t parse_vardecl(
 parse_result_t parse_func_declaration(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
-   parse_context &context)
+   parse_context &ctx)
 {
-   return parse_result_t{nullptr, finish};
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *kw = ::std::get_if<Tokens::Keyword>(&(*start));
+      !(kw && kw->value_ == Tokens::Keyword::Def)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   auto const *funcname = ::std::get_if<Tokens::Identifier>(&(*start));
+   if (!funcname) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Open)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+
+   ::std::vector<Tokens::Identifier> args;
+
+   start = ::std::next(start);
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (auto const *arg = ::std::get_if<Tokens::Identifier>(&(*start))) {
+      args.emplace_back(*arg);
+      start = ::std::next(start);
+      if (start == finish) {
+         return parse_result_t{nullptr, finish};
+      }
+      auto const next_is_comma = [&] {
+         auto const *comma = ::std::get_if<Tokens::Punctuator>(&(*start));
+         return comma && comma->value_ == Tokens::Punctuator::Comma;
+      };
+      bool found_comma = next_is_comma();
+      while (found_comma) {
+         start = ::std::next(start);
+         if (start == finish) {
+            return parse_result_t{nullptr, finish};
+         }
+         if (auto const *arg = ::std::get_if<Tokens::Identifier>(&(*start))) {
+            args.emplace_back(*arg);
+         } else {
+            return parse_result_t{nullptr, finish};
+         }
+         start = ::std::next(start);
+         if (start == finish) {
+            return parse_result_t{nullptr, finish};
+         }
+         found_comma = next_is_comma();
+      }
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Close)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *brace = ::std::get_if<Tokens::CurlyBracket>(&(*start));
+      !(brace && brace->value_ == Tokens::CurlyBracket::Open)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   auto varidx = ctx.declare_var(*funcname);
+   if (!varidx.has_value()) {
+      return parse_result_t{nullptr, finish};
+   }
+
+   auto slist_node = ::std::make_unique<ASTNode>(StatementList{});
+   auto &slist = ::std::get<StatementList>(*slist_node);
+   scope_frame frame{ctx, &slist};
+   // TODO declare all parameters as variables.
+   // TODO Set variable for function to point at function somehow.
+   auto [body, remainder] = parse_sequence(start, finish, ctx, ::std::move(slist_node));
+   if (!body) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (remainder == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *brace = ::std::get_if<Tokens::CurlyBracket>(&(*remainder));
+      !(brace && brace->value_ == Tokens::CurlyBracket::Close)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+
+   return parse_result_t{
+      ::std::make_unique<ASTNode>(
+         FuncDeclaration{
+            Identifier{&slist, varidx.value()},
+            ::std::move(body),
+            args.size()
+         }
+      ),
+      ::std::next(remainder)
+   };
 }
 
 parse_result_t parse_func_call(
