@@ -176,7 +176,7 @@ struct InfixStringizer {
 
    void operator()(Identifier const &id)
    {
-      result_ << id.scope_->var_declarations_[id.varidx_];
+      result_ << id.scope_->var_declarations_[id.varidx_].name_;
    }
 
    void operator()(NumericLiteral const &nl)
@@ -196,7 +196,7 @@ struct InfixStringizer {
    void operator()(AssignmentStatement const &as)
    {
       auto const &id = as.identifier_;
-      result_ << id.scope_->var_declarations_[id.varidx_] << " = ";
+      result_ << id.scope_->var_declarations_[id.varidx_].name_ << " = ";
       ::std::visit(*this, *as.expression_);
    }
 
@@ -227,7 +227,9 @@ struct InfixStringizer {
    void operator()(VarDecl const &vd)
    {
       auto const &id = vd.identifier_;
-      result_ << "var " << id.scope_->var_declarations_[id.varidx_] << " = ";
+      result_ << "var "
+              << id.scope_->var_declarations_[id.varidx_].name_
+              << " = ";
       ::std::visit(*this, *vd.expression_);
    }
 
@@ -254,7 +256,7 @@ struct PrefixStringizer {
 
    void operator()(Identifier const &id)
    {
-      result_ << id.scope_->var_declarations_[id.varidx_];
+      result_ << id.scope_->var_declarations_[id.varidx_].name_;
    }
 
    void operator()(NumericLiteral const &nl)
@@ -276,7 +278,9 @@ struct PrefixStringizer {
    void operator()(AssignmentStatement const &as)
    {
       auto const &id = as.identifier_;
-      result_ << "(setq " << id.scope_->var_declarations_[id.varidx_] << " ";
+      result_ << "(setq "
+              << id.scope_->var_declarations_[id.varidx_].name_
+              << " ";
       ::std::visit(*this, *as.expression_);
       result_ << ")";
    }
@@ -309,7 +313,9 @@ struct PrefixStringizer {
    void operator()(VarDecl const &vd)
    {
       auto const &id = vd.identifier_;
-      result_ << "(setq-new " << id.scope_->var_declarations_[id.varidx_] << ' ';
+      result_ << "(setq-new "
+              << id.scope_->var_declarations_[id.varidx_].name_
+              << ' ';
       ::std::visit(*this, *vd.expression_);
       result_ << ")";
    }
@@ -333,7 +339,7 @@ struct PrefixStringizer {
          if (paramidx != 0) {
             result_ << " ";
          }
-         result_ << slist->var_declarations_[paramidx];
+         result_ << slist->var_declarations_[paramidx].name_;
       }
       result_ << ")\n";
       ::std::visit(*this, *fdecl.body_);
@@ -389,16 +395,22 @@ public:
    ::std::vector<StatementList *> block_stack_;
 
    ::std::optional<StatementList::varidx_t>
-   declare_var(Tokens::Identifier const &id) const {
+   declare_var(
+      Tokens::Identifier const &id,
+      VarInfo::vartype_t type = VarInfo::UInt64
+   ) const {
       auto * const curscope = block_stack_.back();
       auto &scopedecls = curscope->var_declarations_;
       auto const declpos =
-         ::std::find(scopedecls.begin(), scopedecls.end(), id.value_);
+         ::std::find_if(scopedecls.begin(), scopedecls.end(),
+            [&id](VarInfo const &a) -> bool {
+               return a.name_ == id.value_;
+            });
       if (declpos != scopedecls.end()) {
          ::std::cerr << "Redeclaration of variable " << id.value_ << "!\n";
          return {};
       }
-      scopedecls.emplace_back(id.value_);
+      scopedecls.emplace_back(id.value_, type);
       return {scopedecls.size() - 1};
    }
 };
@@ -759,7 +771,7 @@ parse_result_t parse_func_declaration(
    }
    start = ::std::next(start);
 
-   auto varidx = ctx.declare_var(*funcname);
+   auto varidx = ctx.declare_var(*funcname, VarInfo::Function);
    if (!varidx.has_value()) {
       return parse_result_t{nullptr, finish};
    }
@@ -767,8 +779,14 @@ parse_result_t parse_func_declaration(
    auto slist_node = ::std::make_unique<ASTNode>(StatementList{});
    auto &slist = ::std::get<StatementList>(*slist_node);
    scope_frame frame{ctx, &slist};
-   // TODO declare all parameters as variables.
-   // TODO Set variable for function to point at function somehow.
+   for (auto const &arg : args) {
+      auto argidx = ctx.declare_var(arg, VarInfo::UInt64);
+      if (!argidx.has_value()) {
+         ::std::cerr << "Argument name " << arg.value_ << " used twice!\n";
+         return parse_result_t{nullptr, finish};
+      }
+   }
+   assert(slist.var_declarations_.size() == args.size());
    auto [body, remainder] = parse_sequence(start, finish, ctx, ::std::move(slist_node));
    if (!body) {
       return parse_result_t{nullptr, finish};
@@ -1227,7 +1245,12 @@ parse_identifier(
    }
    for (auto slist_: ::std::ranges::reverse_view{ctx.block_stack_}) {
       auto &vdecls = slist_->var_declarations_;
-      auto idloc = ::std::find(vdecls.begin(), vdecls.end(), id->value_);
+      auto idloc =
+         ::std::find_if(
+            vdecls.begin(), vdecls.end(),
+            [&id](VarInfo const &a) -> bool {
+               return a.name_ == id->value_;
+         });
       if (idloc != vdecls.end()) {
          auto const ididx = ::std::distance(vdecls.begin(), idloc);
          assert(ididx >= 0);

@@ -171,12 +171,22 @@ public:
    ::std::uintmax_t const value_;
 };
 
+struct VarInfo {
+   enum vartype_t { UInt64, Function };
+
+   VarInfo(::std::string const &name, vartype_t type)
+      : name_(name), type_(type)
+   {}
+   ::std::string name_;
+   vartype_t type_;
+};
+
 class StatementList {
 public:
    StatementList() = default;
 
    ::std::vector<astptr_t> statements_;
-   ::std::vector<::std::string> var_declarations_;
+   ::std::vector<VarInfo> var_declarations_;
 
    using varidx_t = decltype(var_declarations_)::size_type;
 };
