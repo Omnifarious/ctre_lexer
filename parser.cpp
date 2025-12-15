@@ -86,10 +86,7 @@ void SimpleEvaluator::operator()(StatementList const &sl)
 {
    current_result_ = 0U;
    if (!sl.var_declarations_.empty()) {
-      stack_.emplace_back(
-         &sl,
-         ::std::vector<::std::uintmax_t>{sl.var_declarations_.size(), 0U}
-      );
+      stack_.emplace_back(&sl);
    }
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
