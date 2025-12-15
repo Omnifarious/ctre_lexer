@@ -324,18 +324,19 @@ class SimpleEvaluator {
 
  private:
    ::std::function<void(uintmax_t statement_result)> statement_function_;
+   using varval_t = ::std::variant<::std::uintmax_t, FuncDeclaration *>;
    struct stackframe_t {
-      stackframe_t(
-         StatementList const *ctx,
-         ::std::vector<::std::uintmax_t> values
-      ) : context_(ctx), var_values_(::std::move(values))
-      {}
+      explicit stackframe_t(StatementList const *ctx)
+           : context_(ctx), var_values_(ctx->var_declarations_.size(), varval_t{0U})
+      {
+      }
       StatementList const *context_ = nullptr;
-      ::std::vector<::std::uintmax_t> var_values_;
+      ::std::vector<varval_t> var_values_;
    };
    ::std::vector<stackframe_t> stack_;
+   using stackidx_t = decltype(stack_)::size_type;
 
-   ::std::pair<stackframe_t *, StatementList::varidx_t>
+   ::std::pair<stackidx_t, StatementList::varidx_t>
    find_identifier(Identifier const &id);
 };
 
