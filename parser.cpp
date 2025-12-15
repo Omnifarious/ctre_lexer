@@ -72,7 +72,9 @@ void SimpleEvaluator::operator()(Identifier const &id)
 {
    current_result_ = 0U;
    auto lvalue = find_identifier(id);
-   current_result_ = lvalue.first->var_values_[lvalue.second];
+   auto const &varval = stack_[lvalue.first].var_values_[lvalue.second];
+   assert(::std::holds_alternative<::std::uintmax_t>(varval) && "This program should be impossible.");
+   current_result_ = ::std::get<::std::uintmax_t>(varval);
 }
 
 void SimpleEvaluator::operator()(NumericLiteral const &nl)
@@ -105,7 +107,7 @@ void SimpleEvaluator::operator()(AssignmentStatement const &as)
 {
    auto lvalue = find_identifier(as.identifier_);
    ::std::visit(*this, *as.expression_);
-   lvalue.first->var_values_[lvalue.second] = current_result_;
+   stack_[lvalue.first].var_values_[lvalue.second] = current_result_;
    current_result_ = 0;
 }
 
@@ -134,8 +136,9 @@ void SimpleEvaluator::operator()(WhileStatement const &whilestmt)
 void SimpleEvaluator::operator()(VarDecl const &vd)
 {
    auto lvalue = find_identifier(vd.identifier_);
+   ::std::cerr << "lvalue == {" << lvalue.first << ", " << lvalue.second << "}\n";
    ::std::visit(*this, *vd.expression_);
-   lvalue.first->var_values_[lvalue.second] = current_result_;
+   stack_[lvalue.first].var_values_[lvalue.second] = current_result_;
    current_result_ = 0;
 }
 
@@ -147,18 +150,16 @@ void SimpleEvaluator::operator()(FuncCall const &fcall) {
    return;  // TODO do _something_ rather than nothing.
 }
 
-std::pair<SimpleEvaluator::stackframe_t *, StatementList::varidx_t>
+std::pair<SimpleEvaluator::stackidx_t, StatementList::varidx_t>
 SimpleEvaluator::find_identifier(Identifier const &id)
 {
-   auto const rend = stack_.rend();
-   auto const frame = ::std::find_if(
-      stack_.rbegin(), rend,
-      [&](auto const &sf) {
-         return sf.context_ == id.scope_;
+   for (stackidx_t frame = stack_.size() - 1; frame >= 0; --frame) {
+      if (stack_[frame].context_ == id.scope_) {
+         return {frame, id.varidx_};
       }
-   );
-   assert(frame != rend && "Identifier context not found in any stack frame");
-   return {&(*frame), id.varidx_};
+   }
+   assert(false && "Identifier context not found in any stack frame");
+   return {0, 0};
 }
 
 struct InfixStringizer {
