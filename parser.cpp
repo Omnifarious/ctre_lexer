@@ -87,6 +87,11 @@ void SimpleEvaluator::operator()(StatementList const &sl)
    current_result_ = 0U;
    if (!sl.var_declarations_.empty()) {
       stack_.emplace_back(&sl);
+      assert(
+         stack_.back().context_->var_declarations_.size() == \
+         sl.var_declarations_.size()
+         && "Mismatch between declared variables and initialized values"
+      );
    }
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
