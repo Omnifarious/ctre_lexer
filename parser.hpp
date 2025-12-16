@@ -327,9 +327,9 @@ class SimpleEvaluator {
    using varval_t = ::std::variant<::std::uintmax_t, FuncDeclaration *>;
    struct stackframe_t {
       explicit stackframe_t(StatementList const *ctx)
-           : context_(ctx), var_values_(ctx->var_declarations_.size(), varval_t{0U})
-      {
-      }
+           : context_(ctx),
+             var_values_(ctx->var_declarations_.size(), varval_t{0U})
+      { }
       StatementList const *context_ = nullptr;
       ::std::vector<varval_t> var_values_;
    };
