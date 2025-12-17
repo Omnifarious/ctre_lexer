@@ -15,11 +15,13 @@ find_package(fmt REQUIRED)
 add_executable(lexer_test lexer_test.cpp
         parser.cpp)
 target_compile_features(lexer_test PUBLIC cxx_std_23)
+target_compile_options(lexer_test PRIVATE -Wall -Wextra -Wno-unused-parameter)
 target_link_libraries(lexer_test PRIVATE ctre::ctre)
 
 add_executable(all_tests tests/tokenizer_test.cpp tests/ring_buf_test.cpp
         tests/parser_test.cpp tests/while_test.cpp parser.cpp)
 target_compile_features(all_tests PUBLIC cxx_std_23)
+target_compile_options(all_tests PRIVATE -Wall -Wextra -Wno-unused-parameter)
 target_link_libraries(all_tests PRIVATE Catch2::Catch2WithMain ctre::ctre)
 
 include(CTest)

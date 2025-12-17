@@ -154,7 +154,8 @@ void SimpleEvaluator::operator()(FuncCall const &fcall) {
 std::pair<SimpleEvaluator::stackidx_t, StatementList::varidx_t>
 SimpleEvaluator::find_identifier(Identifier const &id)
 {
-   for (stackidx_t frame = stack_.size() - 1; frame >= 0; --frame) {
+   for (stackidx_t frame = stack_.size(); frame > 0;) {
+      --frame;
       if (stack_[frame].context_ == id.scope_) {
          return {frame, id.varidx_};
       }
@@ -325,7 +326,7 @@ struct PrefixStringizer {
    void operator()(FuncDeclaration const &fdecl) {
       auto const &id = fdecl.name_;
       result_ << "(defun ";
-      (*this)(fdecl.name_);
+      result_ << id.scope_->var_declarations_[id.varidx_].name_;;
       result_ << " (";
       auto const *slist = get_if<StatementList>(fdecl.body_.get());
       assert(slist && "Function somehow missing a body!");
