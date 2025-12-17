@@ -8,13 +8,6 @@ set(CMAKE_MODULE_PATH
         ${CMAKE_CURRENT_LIST_DIR}/Catch2/contrib
 )
 
-# Enable AddressSanitizer for Debug builds
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Enabling AddressSanitizer for Debug build")
-    add_compile_options(-fsanitize=address,undefined  -fsanitize-address-use-after-scope -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address,undefined -fsanitize-address-use-after-scope)
-endif()
-
 add_subdirectory(ctre)
 
 find_package(fmt REQUIRED)
