@@ -324,7 +324,7 @@ class SimpleEvaluator {
 
  private:
    ::std::function<void(uintmax_t statement_result)> statement_function_;
-   using varval_t = ::std::variant<::std::uintmax_t, FuncDeclaration *>;
+   using varval_t = ::std::variant<::std::uintmax_t, FuncDeclaration const *>;
    struct stackframe_t {
       explicit stackframe_t(StatementList const *ctx)
            : context_(ctx),

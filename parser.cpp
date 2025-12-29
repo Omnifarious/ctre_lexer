@@ -144,7 +144,11 @@ void SimpleEvaluator::operator()(VarDecl const &vd)
 }
 
 void SimpleEvaluator::operator ()(FuncDeclaration const &fdecl) {
-   return;  // TODO do _something_ rather than nothing.
+   auto const &idinfo = find_identifier(fdecl.name_);
+   assert(idinfo.first == 0);
+   assert(idinfo.first < stack_.size());
+   assert(idinfo.second < stack_[idinfo.first].var_values_.size());
+   stack_[idinfo.first].var_values_[idinfo.second] = varval_t{&fdecl};
 }
 
 void SimpleEvaluator::operator()(FuncCall const &fcall) {
