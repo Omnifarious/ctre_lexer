@@ -20,8 +20,8 @@ int main()
    using namespace ::std::literals::string_view_literals;
    using rawchars_t = ::std::istreambuf_iterator<char>;
    Tokens::toklist_t tokens = tokenize_input(
-      ::std::istreambuf_iterator<char>{::std::cin},
-      ::std::istreambuf_iterator<char>{}
+      rawchars_t{::std::cin},
+      rawchars_t{}
    );
    using ::std::format;
    using ::std::cout;
@@ -35,7 +35,6 @@ int main()
       },
       [](Tokens::Operator const &t) {
          using namespace ::std::literals::string_view_literals;
-         using sv = ::std::string_view;
          constexpr auto op_name = ::std::array{
             "plus"sv, "minus"sv, "multiply"sv, "divide"sv,
             "log_and"sv, "log_or"sv,
@@ -58,7 +57,6 @@ int main()
       },
       [](Tokens::Keyword const &t) {
          using namespace ::std::literals::string_view_literals;
-         using sv = ::std::string_view;
          auto constexpr keyword_names =
             ::std::array{"If"sv, "Else"sv, "While"sv, "Var"sv, "Def"sv};
          ::std::cout << format("keyword: \"{}\" -> {}\n", t.orig_text_, keyword_names[t.value_]);
