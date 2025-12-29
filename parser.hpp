@@ -334,6 +334,7 @@ class SimpleEvaluator {
       ::std::vector<varval_t> var_values_;
    };
    ::std::vector<stackframe_t> stack_;
+   ::std::vector<varval_t> func_args_;
    using stackidx_t = decltype(stack_)::size_type;
 
    ::std::pair<stackidx_t, StatementList::varidx_t>

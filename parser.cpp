@@ -93,6 +93,12 @@ void SimpleEvaluator::operator()(StatementList const &sl)
          && "Mismatch between declared variables and initialized values"
       );
    }
+   assert(func_args_.empty() || sl.var_declarations_.size() >= func_args_.size());
+   if (!func_args_.empty()) {
+      auto &topvars = stack_.back().var_values_;
+      ::std::copy(func_args_.begin(), func_args_.end(), topvars.begin());
+      func_args_.clear();
+   }
    for (auto const &statement: sl.statements_) {
       ::std::visit(*this, *statement);
       if (statement_function_) {
@@ -152,7 +158,23 @@ void SimpleEvaluator::operator ()(FuncDeclaration const &fdecl) {
 }
 
 void SimpleEvaluator::operator()(FuncCall const &fcall) {
-   return;  // TODO do _something_ rather than nothing.
+   auto const &idinfo = find_identifier(fcall.func_);
+   assert(idinfo.first < stack_.size());
+   assert(idinfo.second < stack_[idinfo.first].var_values_.size());
+   auto const &var_ref = stack_[idinfo.first].var_values_[idinfo.second];
+   assert(::std::holds_alternative<FuncDeclaration const *>(var_ref));
+   auto const * const funcdecl = ::std::get<FuncDeclaration const *>(var_ref);
+   assert(funcdecl != nullptr);
+   assert(func_args_.empty());
+   func_args_.reserve(fcall.param_exprs_.size());
+   for (auto const &arg : fcall.param_exprs_) {
+      ::std::visit(*this, *arg);
+      func_args_.emplace_back(current_result_);
+      current_result_ = 0;
+   }
+   assert(funcdecl->body_ != nullptr);
+   ::std::visit(*this, *funcdecl->body_);
+   assert(func_args_.empty());
 }
 
 std::pair<SimpleEvaluator::stackidx_t, StatementList::varidx_t>
