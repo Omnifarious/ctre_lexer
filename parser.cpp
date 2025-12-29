@@ -821,7 +821,78 @@ parse_result_t parse_func_call(
    Tokens::toklist_t::iterator finish,
    parse_context &context)
 {
-   return parse_result_t{nullptr, finish};
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   auto [funcid, afterfuncname] = parse_identifier(start, finish, context);
+   if (!funcid) {
+      return parse_result_t{nullptr, finish};
+   }
+   assert(::std::holds_alternative<Identifier>(*funcid));
+   auto &funcname = ::std::get<Identifier>(*funcid);
+   if (funcname.scope_->var_declarations_[funcname.varidx_].type_ != VarInfo::Function) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = afterfuncname;
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Open)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+
+   ::std::vector<astptr_t> args;
+
+   auto [expr, remainder] = parse_expression(start, finish, context);
+   while (expr) {
+      args.emplace_back(::std::move(expr));
+
+      start = remainder;
+      if (start == finish) {
+         return parse_result_t{nullptr, finish};
+      }
+      if (
+         auto const *comma = ::std::get_if<Tokens::Punctuator>(&(*start));
+         !(comma && comma->value_ == Tokens::Punctuator::Comma)
+      ) {
+         break;
+      }
+      start = ::std::next(start);
+
+      auto [nextexpr, afterexpr] = parse_expression(start, finish, context);
+      if (!nextexpr) {
+         return parse_result_t{nullptr, finish};
+      }
+      expr = ::std::move(nextexpr);
+      remainder = afterexpr;
+   }
+
+   if (start == finish) {
+      return parse_result_t{nullptr, finish};
+   }
+   if (
+      auto const *paren = ::std::get_if<Tokens::Paren>(&(*start));
+      !(paren && paren->value_ == Tokens::Paren::Close)
+   ) {
+      return parse_result_t{nullptr, finish};
+   }
+   start = ::std::next(start);
+
+   return {
+      ::std::make_unique<ASTNode>(
+         FuncCall{funcname, ::std::move(args)}
+      ),
+      start
+   };
 }
 
 parse_result_t parse_assignment(
