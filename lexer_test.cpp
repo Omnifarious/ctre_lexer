@@ -33,6 +33,9 @@ int main()
       [](Tokens::Identifier const &t) {
          ::std::cout << format(" id: \"{}\" -> {}\n", t.orig_text_, t.value_);
       },
+      [](Tokens::Punctuator const &t) {
+         ::std::cout << format(" pun: \"{}\" -> {}\n", t.orig_text_, "comma"sv);
+      },
       [](Tokens::Operator const &t) {
          using namespace ::std::literals::string_view_literals;
          constexpr auto op_name = ::std::array{
