@@ -7,12 +7,18 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <array>
 #include <variant>
 #include <cassert>
 #include <iterator>
+#include <format>
+#include <iosfwd>
+#include <concepts>
+#include <type_traits>
 #include "ring_buffer_view.hpp"
 
 namespace Tokens {
+using namespace ::std::literals::string_view_literals;
 
 static constexpr auto lex_patterns = ctll::fixed_string{
    "(?m)\\s*(?:"
@@ -39,14 +45,23 @@ struct Base {
 };
 
 struct UnsignedInteger : Base {
+   static constexpr auto S_token_name = "UnsignedInteger"sv;
    ::std::uintmax_t value_;
 };
 
 struct Identifier : Base {
+   static constexpr auto S_token_name = "Identifier"sv;
    ::std::string value_;
 };
 
 struct Operator : Base {
+   static constexpr auto S_token_name = "Operator"sv;
+   static constexpr auto S_val_str = ::std::array{
+      "plus"sv, "minus"sv, "multiply"sv, "divide"sv,
+      "log_and"sv, "log_or"sv,
+      "equal"sv, "greater"sv, "less"sv,
+      "greater_equal"sv, "less_equal"sv, "not_equal"sv
+   };
    enum {
       Plus, Minus, Multiply, Divide, BoolAnd, BoolOr,
       Equal, Greater, Less, GreaterEqual, LessEqual, NotEqual
@@ -54,22 +69,44 @@ struct Operator : Base {
 };
 
 struct Punctuator : Base {
+   static constexpr auto S_val_str = ::std::array{
+      "comma"sv
+   };
+   static constexpr auto S_token_name = "Punctuator"sv;
    enum { Comma } value_;
 };
 
 struct Paren : Base {
+   static constexpr auto S_val_str = ::std::array{
+      "open_paren"sv, "close_paren"sv
+   };
+
+   static constexpr auto S_token_name = "Paren"sv;
    enum { Open, Close } value_;
 };
 
 struct CurlyBracket : Base {
+   static constexpr auto S_val_str = ::std::array{
+      "open_brace"sv, "close_brace"sv
+   };
+
+   static constexpr auto S_token_name = "CurlyBracket"sv;
    enum { Open, Close } value_;
 };
 
 struct Keyword : Base {
+   static constexpr auto S_val_str = ::std::array{
+      "If"sv, "Else"sv, "While"sv, "Var"sv, "Def"sv
+   };
+
+   static constexpr auto S_token_name = "Keyword"sv;
    enum { If, Else, While, Var, Def } value_;
 };
 
-struct Semicolon : Base {};
+struct Semicolon : Base {
+   static constexpr auto S_token_name = "Semicolon"sv;
+   static constexpr auto value_ = ";"sv;
+};
 
 using AnyToken = ::std::variant<
    UnsignedInteger, Identifier, Punctuator,
@@ -89,11 +126,7 @@ inline bool operator==(AnyToken const &a, AnyToken const &b)
       [&b](auto const &a_val) {
          using T = ::std::decay_t<decltype(a_val)>;
          auto const &b_val = ::std::get<T>(b);
-         if constexpr (::std::is_same_v<T, Semicolon>) {
-            return true;
-         } else {
-            return a_val.value_ == b_val.value_;
-         }
+         return a_val.value_ == b_val.value_;
       }, a
    );
 }
@@ -102,6 +135,72 @@ inline bool operator!=(AnyToken const &a, AnyToken const &b)
 {
    return !(a == b);
 }
+
+namespace priv_ {
+
+template <class T, class... Us>
+concept one_of = (::std::same_as<::std::remove_cvref_t<T>, Us> || ...);
+
+template <class T>
+concept HasPrintableValue =
+   one_of<T, UnsignedInteger, Identifier, Semicolon>;
+
+template <class T>
+concept HasEnumValue =
+   !HasPrintableValue<T>;
+
+template <typename FmtContext>
+struct print_visitor {
+   FmtContext &ctx_;
+
+   explicit print_visitor(FmtContext &ctx) : ctx_(ctx) {}
+
+   template <HasPrintableValue TokType>
+   FmtContext::iterator operator ()(TokType const &t) {
+      return ::std::format_to(ctx_.out(), "{}({})", t.S_token_name, t.value_);
+   }
+   template <HasEnumValue TokType>
+   FmtContext::iterator operator ()(TokType const &t) {
+      return ::std::format_to(
+         ctx_.out(), "{}({})", t.S_token_name, t.S_val_str[t.value_]
+      );
+   }
+};
+} // namespace priv_
+
+
+} // namespace Tokens
+
+template<>
+struct std::formatter<Tokens::AnyToken, char>
+{
+   template<class FmtContext>
+   FmtContext::iterator
+   format(Tokens::AnyToken const &s, FmtContext& ctx) const
+   {
+      return ::std::visit(::Tokens::priv_::print_visitor<FmtContext>{ctx}, s);
+   }
+
+   template<class ParseContext>
+   constexpr ParseContext::iterator parse(ParseContext& ctx)
+   {
+      auto it = ctx.begin();
+      if (it == ctx.end())
+         return it;
+
+      if (*it != '}')
+      {
+         throw std::format_error(
+            "There are no valid format args for Tokens::AnyToken."
+         );
+      }
+      return it;
+   }
+};
+
+namespace Tokens {
+
+::std::ostream &operator <<(::std::ostream &, AnyToken const &);
 
 using toklist_t = ::std::vector<AnyToken>;
 
