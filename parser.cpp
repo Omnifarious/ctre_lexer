@@ -165,14 +165,17 @@ void SimpleEvaluator::operator()(FuncCall const &fcall) {
    assert(::std::holds_alternative<FuncDeclaration const *>(var_ref));
    auto const * const funcdecl = ::std::get<FuncDeclaration const *>(var_ref);
    assert(funcdecl != nullptr);
-   assert(func_args_.empty());
-   func_args_.reserve(fcall.param_exprs_.size());
+   ::std::vector<varval_t> local_args;
+   local_args.reserve(fcall.param_exprs_.size());
    for (auto const &arg : fcall.param_exprs_) {
       ::std::visit(*this, *arg);
-      func_args_.emplace_back(current_result_);
+      local_args.emplace_back(current_result_);
       current_result_ = 0;
    }
    assert(funcdecl->body_ != nullptr);
+   assert(func_args_.empty());
+   assert(local_args.size() == fcall.param_exprs_.size());
+   func_args_ = ::std::move(local_args);
    ::std::visit(*this, *funcdecl->body_);
    assert(func_args_.empty());
 }
