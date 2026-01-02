@@ -13,7 +13,6 @@
 #include <iterator>
 #include <format>
 #include <iosfwd>
-#include <concepts>
 #include <type_traits>
 #include "ring_buffer_view.hpp"
 
@@ -136,65 +135,18 @@ inline bool operator!=(AnyToken const &a, AnyToken const &b)
    return !(a == b);
 }
 
-namespace priv_ {
-
-template <class T, class... Us>
-concept one_of = (::std::same_as<::std::remove_cvref_t<T>, Us> || ...);
-
-template <class T>
-concept HasPrintableValue =
-   one_of<T, UnsignedInteger, Identifier, Semicolon>;
-
-template <class T>
-concept HasEnumValue =
-   !HasPrintableValue<T>;
-
-template <typename FmtContext>
-struct print_visitor {
-   FmtContext &ctx_;
-
-   explicit print_visitor(FmtContext &ctx) : ctx_(ctx) {}
-
-   template <HasPrintableValue TokType>
-   FmtContext::iterator operator ()(TokType const &t) {
-      return ::std::format_to(ctx_.out(), "{}({})", t.S_token_name, t.value_);
-   }
-   template <HasEnumValue TokType>
-   FmtContext::iterator operator ()(TokType const &t) {
-      return ::std::format_to(
-         ctx_.out(), "{}({})", t.S_token_name, t.S_val_str[t.value_]
-      );
-   }
-};
-} // namespace priv_
-
-
 } // namespace Tokens
 
 template<>
 struct std::formatter<Tokens::AnyToken, char>
 {
-   template<class FmtContext>
-   FmtContext::iterator
-   format(Tokens::AnyToken const &s, FmtContext& ctx) const
-   {
-      return ::std::visit(::Tokens::priv_::print_visitor<FmtContext>{ctx}, s);
-   }
+   using fmtctx_t = ::std::format_context;
 
-   template<class ParseContext>
-   constexpr ParseContext::iterator parse(ParseContext& ctx)
-   {
-      auto it = ctx.begin();
-      if (it == ctx.end())
-         return it;
+   fmtctx_t::iterator format(Tokens::AnyToken const &t, fmtctx_t &ctx ) const;
 
-      if (*it != '}')
-      {
-         throw std::format_error(
-            "There are no valid format args for Tokens::AnyToken."
-         );
-      }
-      return it;
+   using parsectx_t = ::std::format_parse_context;
+   constexpr parsectx_t::iterator parse(parsectx_t &ctx ) {
+      return ctx.begin();
    }
 };
 
