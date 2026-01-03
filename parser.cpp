@@ -807,6 +807,7 @@ parse_result_t parse_func_declaration(
    if (!varidx.has_value()) {
       return parse_result_t{nullptr, finish};
    }
+   auto const func_scope = ctx.block_stack_.back();
 
    auto slist_node = ::std::make_unique<ASTNode>(StatementList{});
    auto &slist = ::std::get<StatementList>(*slist_node);
@@ -836,7 +837,7 @@ parse_result_t parse_func_declaration(
    return parse_result_t{
       ::std::make_unique<ASTNode>(
          FuncDeclaration{
-            Identifier{&slist, varidx.value()},
+            Identifier{func_scope, varidx.value()},
             ::std::move(body),
             args.size()
          }
