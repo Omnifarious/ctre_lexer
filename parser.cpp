@@ -573,6 +573,16 @@ parse_result_t parse_statement(
       statement = std::move(stmt);
       after = remainder;
    } else if (
+      auto [stmt, remainder] = parse_func_declaration(start, finish, ctx);
+      stmt
+   ) {
+      if (ctx.block_stack_.size() >= 2) {
+         ::std::cerr << "Function declaration must be at the top level!\n";
+         return parse_result_t{nullptr, finish};
+      }
+      statement = std::move(stmt);
+      after = remainder;
+   } else if (
       auto [stmt, remainder] = parse_assignment(start, finish, ctx);
       stmt
    ) {
@@ -1303,6 +1313,12 @@ parse_result_t parse_factor(
 {
    if (start == finish) {
       return {nullptr, finish};
+   }
+   if (
+      auto func_call_result = parse_func_call(start, finish, ctx);
+      func_call_result.first
+   ) {
+      return func_call_result;
    }
    if (auto idresult = parse_identifier(start, finish, ctx); idresult.first) {
       return idresult;
