@@ -155,6 +155,7 @@ void SimpleEvaluator::operator ()(FuncDeclaration const &fdecl) {
    assert(idinfo.first < stack_.size());
    assert(idinfo.second < stack_[idinfo.first].var_values_.size());
    stack_[idinfo.first].var_values_[idinfo.second] = varval_t{&fdecl};
+   current_result_ = 0;
 }
 
 void SimpleEvaluator::operator()(FuncCall const &fcall) {
