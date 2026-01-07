@@ -1,0 +1,13 @@
+def pow(base, exp) {
+   if (exp) {
+      if (2 * (exp / 2) = exp) {
+         pow(base * base, exp / 2);
+      } else {
+         base * pow(base * base, exp / 2);
+      }
+   } else {
+      1;
+   }
+}
+
+pow(3, 12);

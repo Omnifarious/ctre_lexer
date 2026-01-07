@@ -1,0 +1,9 @@
+var i = 5;
+while (i < 10) {
+   var j = i;
+   {
+      var foo = j + i;
+      foo;
+   }
+   i = i + 1;
+}

@@ -1,0 +1,10 @@
+def f(x) {
+   x * x;
+}
+
+def g(x) {
+   x * x * x;
+}
+
+var n = 5;
+f(g(n)) = g(f(n));

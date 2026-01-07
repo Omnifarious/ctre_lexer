@@ -1,0 +1,13 @@
+def fib(n) {
+   var a = 0;
+   var b = 1;
+   while (n) {
+      var t = a + b;
+      a = b;
+      b = t;
+      n = n - 1;
+   }
+   a;
+}
+
+fib(31);
