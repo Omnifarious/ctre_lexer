@@ -174,8 +174,12 @@ struct VarInfo {
    VarInfo(::std::string const &name, vartype_t type)
       : name_(name), type_(type)
    {}
+   VarInfo(::std::string const &name, vartype_t type, ::std::uint64_t arity)
+      : name_(name), type_(type), arity_(arity)
+   {}
    ::std::string name_;
    vartype_t type_;
+   ::std::uint64_t arity_ = 0;
 };
 
 class StatementList {

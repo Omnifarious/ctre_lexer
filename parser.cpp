@@ -424,13 +424,25 @@ struct PrefixStringizer {
 
 namespace priv_ {
 class parse_context {
-public:
+ public:
    ::std::vector<StatementList *> block_stack_;
 
    ::std::optional<StatementList::varidx_t>
-   declare_var(
+   declare_var(Tokens::Identifier const &id) {
+      return declare(id, VarInfo::UInt64, 0);
+   }
+
+   ::std::optional<StatementList::varidx_t>
+   declare_func(Tokens::Identifier const &id, ::std::uint64_t arity) {
+      return declare(id, VarInfo::Function, arity);
+   }
+
+ private:
+   ::std::optional<StatementList::varidx_t>
+   declare(
       Tokens::Identifier const &id,
-      VarInfo::vartype_t type = VarInfo::UInt64
+      VarInfo::vartype_t type,
+      ::std::uint64_t arity
    ) const {
       auto * const curscope = block_stack_.back();
       auto &scopedecls = curscope->var_declarations_;
@@ -443,7 +455,7 @@ public:
          ::std::cerr << "Redeclaration of variable " << id.value_ << "!\n";
          return {};
       }
-      scopedecls.emplace_back(id.value_, type);
+      scopedecls.emplace_back(id.value_, type, arity);
       return {scopedecls.size() - 1};
    }
 };
@@ -814,7 +826,7 @@ parse_result_t parse_func_declaration(
    }
    start = ::std::next(start);
 
-   auto varidx = ctx.declare_var(*funcname, VarInfo::Function);
+   auto varidx = ctx.declare_func(*funcname, args.size());
    if (!varidx.has_value()) {
       return parse_result_t{nullptr, finish};
    }
@@ -824,7 +836,7 @@ parse_result_t parse_func_declaration(
    auto &slist = ::std::get<StatementList>(*slist_node);
    scope_frame frame{ctx, &slist};
    for (auto const &arg : args) {
-      auto argidx = ctx.declare_var(arg, VarInfo::UInt64);
+      auto argidx = ctx.declare_var(arg);
       if (!argidx.has_value()) {
          ::std::cerr << "Argument name " << arg.value_ << " used twice!\n";
          return parse_result_t{nullptr, finish};
@@ -865,13 +877,16 @@ parse_result_t parse_func_call(
    if (start == finish) {
       return parse_result_t{nullptr, finish};
    }
-   auto [funcid, afterfuncname] = parse_identifier(start, finish, context);
-   if (!funcid) {
+   auto [funcnode, afterfuncname] = parse_identifier(start, finish, context);
+   if (!funcnode) {
       return parse_result_t{nullptr, finish};
    }
-   assert(::std::holds_alternative<Identifier>(*funcid));
-   auto &funcname = ::std::get<Identifier>(*funcid);
-   if (funcname.scope_->var_declarations_[funcname.varidx_].type_ != VarInfo::Function) {
+   assert(::std::holds_alternative<Identifier>(*funcnode));
+   auto const &funcid = ::std::get<Identifier>(*funcnode);
+   auto const var_info = funcid.scope_->var_declarations_[funcid.varidx_];
+   if (
+      var_info.type_ != VarInfo::Function
+   ) {
       return parse_result_t{nullptr, finish};
    }
    start = afterfuncname;
@@ -928,9 +943,15 @@ parse_result_t parse_func_call(
    }
    start = ::std::next(start);
 
+   if (args.size() != var_info.arity_) {
+      ::std::cerr << "Function " << var_info.name_ << " called with " << args.size()
+                  << " arguments, but expects " << var_info.arity_ << "!\n";
+      return parse_result_t{nullptr, finish};
+   }
+
    return {
       ::std::make_unique<ASTNode>(
-         FuncCall{funcname, ::std::move(args)}
+         FuncCall{funcid, ::std::move(args)}
       ),
       start
    };
