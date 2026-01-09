@@ -10,9 +10,6 @@
 #include <string>
 #include <utility>
 #include <functional>
-#include <stack>
-#include <unordered_map>
-#include <unordered_set>
 #include "tokens.hpp"
 
 namespace Parser {
