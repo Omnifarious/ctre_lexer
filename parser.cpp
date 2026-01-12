@@ -585,7 +585,7 @@ parse_result_t parse_statement(
       statement = std::move(stmt);
       after = remainder;
    } else if (
-      auto [stmt, remainder] = parse_func_declaration(start, finish, ctx);
+      auto [stmt, remainder] = parse_func_definition(start, finish, ctx);
       stmt
    ) {
       if (ctx.block_stack_.size() >= 2) {
@@ -737,7 +737,7 @@ parse_result_t parse_vardecl(
    };
 }
 
-parse_result_t parse_func_declaration(
+parse_result_t parse_func_definition(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
    parse_context &ctx)

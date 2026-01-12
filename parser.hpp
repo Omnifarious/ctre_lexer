@@ -89,7 +89,7 @@ parse_vardecl(
    priv_::parse_context &context
 );
 parse_result_t
-parse_func_declaration(
+parse_func_definition(
    Tokens::toklist_t::iterator start,
    Tokens::toklist_t::iterator finish,
    priv_::parse_context &context
