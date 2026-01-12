@@ -17,10 +17,11 @@ namespace Parser {
 // Here is a sort of pseudo-BNF for what's being parsed.
 //
 // sequence = statement [ sequence ]
-// statement = if_statement | while_statement | assignment |
+// statement = if_statement | while_statement | assignment | func_definition |
 //             func_declaration | expression_statement | "{" sequence "}"
 // var_declaration = VAR IDENTIFIER "=" expression ";"
-// func_declaration = DEF IDENTIFIER "(" [ identifier_list ] ")" "{" sequence "}"
+// func_declaration = DEF IDENTIFIER "(" [ identifier_list ] ")" ";"
+// func_definition = DEF IDENTIFIER "(" [ identifier_list ] ")" "{" sequence "}"
 // if_statement = IF "(" expression ")" statement [ ELSE statement ]
 // while_statement = WHILE "(" expression ")" statement
 // assignment = identifier "=" expression ";"
