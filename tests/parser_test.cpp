@@ -346,7 +346,7 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 CHECK(result->evaluate() == 42);
                 CHECK(result->to_infix_string() == "if (1) {\n42;\n}\n");
-                CHECK(result->to_prefix_string() == "(progn\n    (if (1) (progn\n42)\n)\n\n)");
+                CHECK(result->to_prefix_string() == "(progn\n    (if 1\n42)\n\n)");
             }
         }
     }
@@ -366,7 +366,7 @@ SCENARIO(
                 REQUIRE(remainder == tokens.end());
                 CHECK(result->evaluate() == 24);
                 CHECK(result->to_infix_string() == "if (0) {\n42;\n} else {\n24;\n}\n");
-                CHECK(result->to_prefix_string() == "(progn\n    (if (0) (progn\n42)\n    (progn\n24))\n\n)");
+                CHECK(result->to_prefix_string() == "(progn\n    (if 0\n42\n    24)\n\n)");
             }
         }
     }

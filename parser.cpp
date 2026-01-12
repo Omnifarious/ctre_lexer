@@ -320,27 +320,26 @@ struct PrefixStringizer {
 
    void operator()(IfStatement const &ifs)
    {
-      result_ << "(if (";
+      result_ << "(if ";
       ::std::visit(*this, *ifs.condition_);
-      result_ << ") (progn\n";
+      result_ << "\n";
       ::std::visit(*this, *ifs.then_statement_);
-      result_ << ")\n";
       if (!ifs.else_statement_) {
          result_ << ")\n";
       } else {
-         result_ << "    (progn\n";
+         result_ << "\n    ";
          ::std::visit(*this, *ifs.else_statement_);
-         result_ << "))\n";
+         result_ << ")\n";
       }
    }
 
    void operator()(WhileStatement const &whilestmt)
    {
-      result_ << "(while (";
+      result_ << "(while ";
       ::std::visit(*this, *whilestmt.condition_);
-      result_ << ") (progn\n";
+      result_ << "\n    ";
       ::std::visit(*this, *whilestmt.repeated_);
-      result_ << "))\n";
+      result_ << ")\n";
    }
 
    void operator()(VarDecl const &vd)
