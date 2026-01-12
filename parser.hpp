@@ -18,7 +18,7 @@ namespace Parser {
 //
 // sequence = statement [ sequence ]
 // statement = if_statement | while_statement | assignment |
-//             expression_statement | "{" sequence "}"
+//             func_declaration | expression_statement | "{" sequence "}"
 // var_declaration = VAR IDENTIFIER "=" expression ";"
 // func_declaration = DEF IDENTIFIER "(" [ identifier_list ] ")" "{" sequence "}"
 // if_statement = IF "(" expression ")" statement [ ELSE statement ]
